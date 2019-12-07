@@ -1,0 +1,3 @@
+[submodule "demos/third_party/microtbx"]
+	path = demos/third_party/microtbx
+	url = https://github.com/feaser/microtbx.git

@@ -1,2 +1,2 @@
-# microlibblt
-A microcontroller optimized version of LibOpenBLT
+# MicroLibBLT
+A microcontroller optimized version of LibOpenBLT.

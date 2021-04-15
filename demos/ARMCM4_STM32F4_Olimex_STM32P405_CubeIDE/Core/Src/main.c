@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,15 +86,16 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-
+  /* Initialize the application */
+  AppInit();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_Delay(500);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
+    /* Run the application */
+    AppTask();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

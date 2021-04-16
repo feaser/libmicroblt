@@ -47,11 +47,14 @@ extern "C" {
 /****************************************************************************************
 *             V E R S I O N   I N F O R M A T I O N
 ****************************************************************************************/
-/****************************************************************************************
-* Function prototypes
-****************************************************************************************/
-uint32_t     MicroBltVersionGetNumber(void);
-char const * MicroBltVersionGetString(void);
+/** \brief Main version number of LibMicroBLT. */
+#define MICRO_BLT_VERSION_MAIN                         (0U)
+
+/** \brief Minor version number of LibMicroBLT. */
+#define MICRO_BLT_VERSION_MINOR                        (1U)
+
+/** \brief Patch number of LibMicroBLT. */
+#define MICRO_BLT_VERSION_PATCH                        (0U)
 
 
 #ifdef __cplusplus

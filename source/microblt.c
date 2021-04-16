@@ -37,48 +37,4 @@
 #include "microblt.h"                            /* LibMicroBLT global header          */
 
 
-/****************************************************************************************
-*             V E R S I O N   I N F O R M A T I O N
-****************************************************************************************/
-/****************************************************************************************
-* Macro definitions
-****************************************************************************************/
-/** \brief The version number of the library as an integer. The number has two digits
- *         for major-, minor-, and patch-version. Version 1.05.12 would for example be
- *         10512.
- */
-#define MICRO_BLT_VERSION_NUMBER   (00100u)
-
-/** \brief The version number of the library as a null-terminated string. */
-#define MICRO_BLT_VERSION_STRING   "0.01.00"
-
-
-/****************************************************************************************
-* Function prototypes
-****************************************************************************************/
-/************************************************************************************//**
-** \brief     Obtains the version number of the library as an integer. The number has two
-**            digits for major-, minor-, and patch-version. Version 1.05.12 would for
-**            example return 10512.
-** \return    Library version number as an integer.
-**
-****************************************************************************************/
-uint32_t MicroBltVersionGetNumber(void)
-{
-  return MICRO_BLT_VERSION_NUMBER;
-} /*** end of MicroBltVersionGetNumber ***/
-
-
-/************************************************************************************//**
-** \brief     Obtains the version number of the library as a null-terminated string. 
-**            Version 1.05.12 would for example return "1.05.12".
-** \return    Library version number as a null-terminated string.
-**
-****************************************************************************************/
-char const * MicroBltVersionGetString(void)
-{
-  return MICRO_BLT_VERSION_STRING;
-} /*** end of MicroBltVersionGetString ***/
-
-
 /*********************************** end of microblt.c *********************************/

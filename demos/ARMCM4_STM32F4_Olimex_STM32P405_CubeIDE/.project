@@ -43,7 +43,7 @@
 	</linkedResources>
 	<filteredResources>
 		<filter>
-			<id>1618517479221</id>
+			<id>1618586454172</id>
 			<name>ThirdParty</name>
 			<type>9</type>
 			<matcher>
@@ -52,7 +52,25 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1618517497934</id>
+			<id>1618586454174</id>
+			<name>ThirdParty</name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-freertos</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1618586484379</id>
+			<name>ThirdParty/freertos</name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-FreeRTOS</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1618586976588</id>
 			<name>ThirdParty/microtbx</name>
 			<type>9</type>
 			<matcher>
@@ -61,7 +79,16 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1618517520484</id>
+			<id>1618586503092</id>
+			<name>ThirdParty/freertos/FreeRTOS</name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-Source</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1618586990785</id>
 			<name>ThirdParty/microtbx/source/port</name>
 			<type>9</type>
 			<matcher>
@@ -70,12 +97,30 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1618517530663</id>
+			<id>1618591852991</id>
+			<name>ThirdParty/freertos/FreeRTOS/Source/portable</name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-GCC</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1618586941775</id>
 			<name>ThirdParty/microtbx/source/port/ARM_CORTEXM</name>
 			<type>9</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-GCC</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1618586574368</id>
+			<name>ThirdParty/freertos/FreeRTOS/Source/portable/GCC</name>
+			<type>9</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-ARM_CM4F</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

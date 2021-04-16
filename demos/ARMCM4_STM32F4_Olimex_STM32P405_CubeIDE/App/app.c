@@ -36,7 +36,31 @@
 ****************************************************************************************/
 #include "app.h"                                    /* application header              */
 #include "microblt.h"                               /* LibMicroBLT                     */
+#include "microtbx.h"                               /* MicroTBX                        */
+#include "FreeRTOS.h"                               /* FreeRTOS                        */
+#include "task.h"                                   /* FreeRTOS tasks                  */
 #include "stm32f4xx_hal.h"                          /* HAL drivers                     */
+
+
+/****************************************************************************************
+* Macro definitions
+****************************************************************************************/
+/** \brief Priority of the application task. */
+#define APP_TASK_PRIO    (( UBaseType_t ) 8U)
+
+
+/****************************************************************************************
+* Function prototypes
+****************************************************************************************/
+static void AppAssertionHandler(const char * const file, uint32_t line);
+static void AppTask(void * pvParameters);
+
+
+/****************************************************************************************
+* Local data declarations
+****************************************************************************************/
+/** \brief Handle of the application task. */
+static TaskHandle_t appTaskHandle = NULL;
 
 
 /************************************************************************************//**
@@ -47,20 +71,91 @@
 ****************************************************************************************/
 void AppInit(void)
 {
+  /* Register the application specific assertion handler. */
+  TbxAssertSetHandler(AppAssertionHandler);
+  /* Create the application task. */
+  xTaskCreate(AppTask, "AppTask", configMINIMAL_STACK_SIZE, NULL, APP_TASK_PRIO, &appTaskHandle);
+  /* Start the RTOS scheduler. */
+  vTaskStartScheduler();
 } /*** end of AppInit ***/
 
 
 /************************************************************************************//**
-** \brief     Task function of the application. Should be called continuously in the
-**            program loop.
+** \brief     Triggers the run-time assertion. The default implementation is to enter an
+**            infinite loop, which halts the program and can be used for debugging
+**            purposes. Inspecting the values of the file and line parameters gives a
+**            clear indication where the run-time assertion occurred. Note that an
+**            alternative application specific assertion handler can be configured with
+**            function TbxAssertSetHandler().
+** \param     file The filename of the source file where the assertion occurred in.
+** \param     line The line number inside the file where the assertion occurred.
+**
+****************************************************************************************/
+static void AppAssertionHandler(const char * const file, uint32_t line)
+{
+  TBX_UNUSED_ARG(file);
+  TBX_UNUSED_ARG(line);
+
+  /* Disable interrupts to prevent task switching. */
+  taskDISABLE_INTERRUPTS();
+
+  /* Hang the program by entering an infinite loop. The values for file and line can
+   * then be inspected with the debugger to locate the source of the run-time assertion.
+   */
+  for (;;)
+  {
+    ;
+  }
+} /*** end of AppAssertionHandler ***/
+
+
+/************************************************************************************//**
+** \brief     Task function of the application.
+** \param     pvParameters Pointer to optional task parameters
 ** \return    none.
 **
 ****************************************************************************************/
-void AppTask(void)
+static void AppTask(void * pvParameters)
 {
-  HAL_Delay(500);
-  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
+  const TickType_t ledToggleTicks = 500U / portTICK_PERIOD_MS;
+
+  TBX_UNUSED_ARG(pvParameters);
+
+  /* Enter infinite task loop. */
+  for (;;)
+  {
+    /* Toggle the LED at a fixed interval. */
+    vTaskDelay(ledToggleTicks);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
+  }
 } /*** end of AppTask ***/
+
+
+/************************************************************************************//**
+** \brief     FreeRTOS hook function that gets called when memory allocation failed.
+**
+****************************************************************************************/
+void vApplicationMallocFailedHook(void)
+{
+  /* Trigger an assertion for debugging purposes. */
+  TBX_ASSERT(TBX_ERROR);
+} /*** end of vApplicationMallocFailedHook ***/
+
+
+/************************************************************************************//**
+** \brief     FreeRTOS hook function that gets called when a stack overflow was detected.
+** \param     xTask Handle of the task that has a stack overflow.
+** \param     pcTaskName Name of the task that has a stack overflow.
+**
+****************************************************************************************/
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char * pcTaskName)
+{
+  TBX_UNUSED_ARG(xTask);
+  TBX_UNUSED_ARG(pcTaskName);
+
+  /* Trigger an assertion for debugging purposes. */
+  TBX_ASSERT(TBX_ERROR);
+} /*** end of vApplicationStackOverflowHook ***/
 
 
 /*********************************** end of app.c **************************************/

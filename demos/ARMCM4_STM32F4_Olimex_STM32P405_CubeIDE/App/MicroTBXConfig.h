@@ -1,6 +1,6 @@
 /************************************************************************************//**
-* \file         app.h
-* \brief        Application header file.
+* \file         MicroTBXConfig.h
+* \brief        Project specific MicroTBX configuration header file.
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -30,14 +30,34 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef APP_H
-#define APP_H
+#ifndef MICRO_TBX_CONFIG_H
+#define MICRO_TBX_CONFIG_H
+
+/* Note that this is a project specific configuration file for MicroTBX. It is enabled
+ * by setting the macro definition PROJ_TBX_CONF_H="MicroTBXConfig.h" in the compiler's
+ * preprocessor settings. It overrides the default tbx_conf.h file.
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/****************************************************************************************
+*   A S S E R T I O N S   M O D U L E   C O N F I G U R A T I O N
+****************************************************************************************/
+/** \brief Enable/disable run-time assertions. */
+#define TBX_CONF_ASSERTIONS_ENABLE               (1U)
+
 
 /****************************************************************************************
-* Function prototypes
+*   H E A P   M O D U L E   C O N F I G U R A T I O N
 ****************************************************************************************/
-void AppInit(void);
+/** \brief Configure the size of the heap in bytes. */
+#define TBX_CONF_HEAP_SIZE                       (16U * 1024U)
 
 
-#endif /* APP_H */
-/*********************************** end of app.h **************************************/
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* MICRO_TBX_CONFIG_H */
+/*********************************** end of MicroTBXConfig.h ***************************/

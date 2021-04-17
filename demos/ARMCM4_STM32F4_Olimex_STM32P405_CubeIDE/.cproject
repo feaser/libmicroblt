@@ -101,6 +101,8 @@
                                     									
                                     <listOptionValue builtIn="false" value="../../third_party/microtbx/source/port/ARM_CORTEXM"/>
                                     									
+                                    <listOptionValue builtIn="false" value="../../third_party/fatfs/src"/>
+                                    									
                                     <listOptionValue builtIn="false" value="../../third_party/freertos/FreeRTOS/Source/include"/>
                                     									
                                     <listOptionValue builtIn="false" value="../../third_party/freertos/FreeRTOS/Source/portable/GCC/ARM_CM4F"/>

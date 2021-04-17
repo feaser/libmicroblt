@@ -1,9 +1,6 @@
 [submodule "demos/third_party/microtbx"]
 	path = demos/third_party/microtbx
 	url = https://github.com/feaser/microtbx.git
-[submodule "demos/third_party/fatfs"]
-	path = demos/third_party/fatfs
-	url = https://github.com/abbrev/fatfs.git
 [submodule "demos/third_party/freertos"]
 	path = demos/third_party/freertos
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git

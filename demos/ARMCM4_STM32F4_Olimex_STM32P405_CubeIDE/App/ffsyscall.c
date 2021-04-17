@@ -126,6 +126,9 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block */
      * is already NULL to flag this error.
      */
     result = TbxMemPoolAllocate(msize);
+
+    /* Assert the allocation result for debugging purposes. */
+    TBX_ASSERT(result != NULL);
   }
 
   /* Give the result back to the caller. */

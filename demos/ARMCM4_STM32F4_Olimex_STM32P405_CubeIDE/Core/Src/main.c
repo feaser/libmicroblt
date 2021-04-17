@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
+#include "microtbx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,7 +75,11 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  /* Set the irq priority of the tick source, as this is currently not done
+   * properly by the HAL drivers, in case a TIM peripheral is used as the tick
+   * source, instead of the SysTick.
+   */
+  uwTickPrio = 0;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -290,6 +295,9 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  #if (TBX_CONF_ASSERTIONS_ENABLE > 0U)
+  TbxAssertTrigger((const char * const)file, line);
+  #endif /* (TBX_CONF_ASSERTIONS_ENABLE > 0U) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

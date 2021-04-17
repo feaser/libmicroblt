@@ -95,7 +95,7 @@
 #define configTICK_RATE_HZ                            ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES                          ( 16 )
 #define configMINIMAL_STACK_SIZE                      ( ( unsigned short ) 128 )
-/* Note that the heap is managed by MicroTBX. Look at heap_tbx.c for implementation
+/* Note that the heap is managed by MicroTBX. Look at FreeRTOSHeap.c for implementation
  * details. The total heap size is controlled by configuration macro TBX_CONF_HEAP_SIZE
  * in MicroTBXConfig.h.
  */

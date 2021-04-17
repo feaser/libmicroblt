@@ -32,10 +32,10 @@
 ****************************************************************************************/
 
 /*
- * An implementation of pvPortMalloc() based on MicroTBX. Note that this
- * implementation does NOT allow allocated memory to be freed again.
+ * An implementation of pvPortMalloc() and vPortFree() based on the memory pools module
+ * of MicroTBX. Note that this implementation allows allocated memory to be freed again.
  *
- * See heap_2.c, heap_3.c and heap_4.c for alternative implementations, and the
+ * See heap_1.c, heap_2.c, heap_3.c and heap_4.c for alternative implementations, and the
  * memory management pages of http://www.FreeRTOS.org for more information.
  */
 
@@ -63,7 +63,27 @@ void *pvPortMalloc( size_t xWantedSize )
 
   vTaskSuspendAll();
   {
-    pvReturn = TbxHeapAllocate( xWantedSize );
+    /* Attempt to allocate a block from the best fitting memory pool. */
+    pvReturn = TbxMemPoolAllocate(xWantedSize);
+    /* Was the allocation not successful? */
+    if (pvReturn == NULL)
+    {
+      /* The allocation failed. This can have two reasons:
+       *   1. A memory pool for the requested size hasn't yet been created.
+       *   2. The memory pool for the requested size has no more free blocks.
+       * Both situations can be solved by calling TbxMemPoolCreate(), as this
+       * function automatically extends a memory pool, if it was created before.
+       * Note that ther is not need to check the return value, because we will
+       * attempts to allocate again right afterwards. We can catch the error
+       * there in case the allocation fails.
+       */
+      (void)TbxMemPoolCreate(1U, xWantedSize);
+
+      /* Assuming sufficient heap was available, the memory pool was extended.
+       * Attempt to allocate the block again.
+       */
+      pvReturn = TbxMemPoolAllocate(xWantedSize);
+    }
     traceMALLOC( pvReturn, xWantedSize );
   }
   ( void ) xTaskResumeAll();
@@ -84,20 +104,8 @@ void *pvPortMalloc( size_t xWantedSize )
 
 void vPortFree( void *pv )
 {
-  /* Memory cannot be freed using this scheme.  See heap_2.c, heap_3.c and
-  heap_4.c for alternative implementations, and the memory management pages of
-  http://www.FreeRTOS.org for more information. */
-  ( void ) pv;
-
-  /* Force an assert as it is invalid to call this function. */
-  configASSERT( pv == NULL );
-}
-
-/*-----------------------------------------------------------*/
-
-size_t xPortGetFreeHeapSize( void )
-{
-  return TbxHeapGetFree();
+  /* Give the block back to the memory pool. */
+  TbxMemPoolRelease(pv);
 }
 
 

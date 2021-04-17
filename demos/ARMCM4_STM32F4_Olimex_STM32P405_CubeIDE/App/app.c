@@ -52,8 +52,8 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-static void AppAssertionHandler(const char * const file, uint32_t line);
 static void AppTask(void * pvParameters);
+static void AppAssertionHandler(const char * const file, uint32_t line);
 
 
 /****************************************************************************************
@@ -78,6 +78,28 @@ void AppInit(void)
   /* Start the RTOS scheduler. */
   vTaskStartScheduler();
 } /*** end of AppInit ***/
+
+
+/************************************************************************************//**
+** \brief     Task function of the application.
+** \param     pvParameters Pointer to optional task parameters
+** \return    none.
+**
+****************************************************************************************/
+static void AppTask(void * pvParameters)
+{
+  const TickType_t ledToggleTicks = 500U / portTICK_PERIOD_MS;
+
+  TBX_UNUSED_ARG(pvParameters);
+
+  /* Enter infinite task loop. */
+  for (;;)
+  {
+    /* Toggle the LED at a fixed interval. */
+    vTaskDelay(ledToggleTicks);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
+  }
+} /*** end of AppTask ***/
 
 
 /************************************************************************************//**
@@ -107,28 +129,6 @@ static void AppAssertionHandler(const char * const file, uint32_t line)
     ;
   }
 } /*** end of AppAssertionHandler ***/
-
-
-/************************************************************************************//**
-** \brief     Task function of the application.
-** \param     pvParameters Pointer to optional task parameters
-** \return    none.
-**
-****************************************************************************************/
-static void AppTask(void * pvParameters)
-{
-  const TickType_t ledToggleTicks = 500U / portTICK_PERIOD_MS;
-
-  TBX_UNUSED_ARG(pvParameters);
-
-  /* Enter infinite task loop. */
-  for (;;)
-  {
-    /* Toggle the LED at a fixed interval. */
-    vTaskDelay(ledToggleTicks);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
-  }
-} /*** end of AppTask ***/
 
 
 /************************************************************************************//**

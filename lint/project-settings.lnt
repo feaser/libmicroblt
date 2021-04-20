@@ -4,6 +4,11 @@
 // project specific search directories
 -i../demos/third_party/microtbx/source
 -i../demos/third_party/microtbx/source/port/ARM_CORTEXM
+-i../demos/third_party/fatfs/src
+-i../demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/App
+-i../demos/third_party/freertos/FreeRTOS/Source/include
+-i../demos/third_party/freertos/FreeRTOS/Source/portable/GCC/ARM_CM4F
+
 
 
 

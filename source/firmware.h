@@ -52,7 +52,7 @@ extern "C" {
 * Type definitions
 ****************************************************************************************/
 /** \brief Firmware file reader. It provides the API interface for linking specific
- * firmware file type readers. For example a reader for S-records.
+ *         firmware file type readers. For example a reader for S-records.
  */
 typedef struct
 {
@@ -69,21 +69,26 @@ typedef struct
   void            (* FileClose) (void);
 
   /** \brief Obtain the number of firmware data segments detected in the file. */
-  uint16_t        (* SegmentGetCount) (void);
+  uint8_t         (* SegmentGetCount) (void);
 
   /** \brief Opens a firmware data segment for reading. */
-  uint8_t         (* SegmentOpen) (uint16_t idx);
+  void            (* SegmentOpen) (uint8_t idx);
 
   /** \brief Obtains a data point to the segment's next chunk of firmware data. */
-  uint8_t const * (* SegmentGetNextData) (uint32_t * address, uint32_t * len);
+  uint8_t const * (* SegmentGetNextData) (uint32_t * address, uint16_t * len);
 } tFirmwareReader;
 
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void FirmwareInit(tFirmwareReader const * reader);
-void FirmwareTerminate(void);
+void            FirmwareInit(tFirmwareReader const * reader);
+void            FirmwareTerminate(void);
+uint8_t         FirmwareFileOpen(char const * firmwareFile);
+void            FirmwareFileClose(void);
+uint8_t         FirmwareSegmentGetCount(void);
+void            FirmwareSegmentOpen(uint8_t idx);
+uint8_t const * FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len);
 
 
 #ifdef __cplusplus

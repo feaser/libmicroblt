@@ -52,13 +52,13 @@ extern "C" {
 *             V E R S I O N   I N F O R M A T I O N
 ****************************************************************************************/
 /** \brief Main version number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_MAIN                   (0U)
+#define BLT_VERSION_MAIN                    ((uint8_t)0U)
 
 /** \brief Minor version number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_MINOR                  (1U)
+#define BLT_VERSION_MINOR                   ((uint8_t)1U)
 
 /** \brief Patch number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_PATCH                  (0U)
+#define BLT_VERSION_PATCH                   ((uint8_t)0U)
 
 
 /****************************************************************************************
@@ -72,14 +72,19 @@ extern "C" {
  *         microcontroller compiler toolchains included functionality to output or
  *         convert the firmware's data as an S-record.
  */
-#define MICRO_BLT_FIRMWARE_READER_SRECORD        ((uint8_t)0u)
+#define BLT_FIRMWARE_READER_SRECORD         ((uint8_t)0U)
 
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void MicroBltFirmwareInit(uint8_t readerType);
-void MicroBltFirmwareTerminate(void);
+void            BltFirmwareInit(uint8_t readerType);
+void            BltFirmwareTerminate(void);
+uint8_t         BltFirmwareFileOpen(char const * firmwareFile);
+void            BltFirmwareFileClose(void);
+uint8_t         BltFirmwareSegmentGetCount(void);
+void            BltFirmwareSegmentOpen(uint8_t idx);
+uint8_t const * BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len);
 
 
 #ifdef __cplusplus

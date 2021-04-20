@@ -36,6 +36,7 @@
 * Include files
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
+#include <ff.h>                             /* FatFS                                   */
 #include "firmware.h"                       /* Firmware reader module                  */
 #include "srecreader.h"                     /* S-record firmware file reader           */
 
@@ -47,9 +48,9 @@ static void            SRecReaderInit(void);
 static void            SRecReaderTerminate(void);
 static uint8_t         SRecReaderFileOpen(char const * firmwareFile);
 static void            SRecReaderFileClose(void);
-static uint16_t        SRecReaderSegmentGetCount(void);
-static uint8_t         SRecReaderSegmentOpen(uint16_t idx);
-static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint32_t * len);
+static uint8_t         SRecReaderSegmentGetCount(void);
+static void            SRecReaderSegmentOpen(uint8_t idx);
+static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
 
 
 /***********************************************************************************//**
@@ -78,7 +79,7 @@ tFirmwareReader const * SRecReaderGet(void)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Initializes the S-record reader.
 **
 ****************************************************************************************/
 static void SRecReaderInit(void)
@@ -88,7 +89,7 @@ static void SRecReaderInit(void)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Terminated the S-record reader.
 **
 ****************************************************************************************/
 static void SRecReaderTerminate(void)
@@ -98,7 +99,10 @@ static void SRecReaderTerminate(void)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Opens the firmware file and browses through its contents to collect
+**            information about the firmware data segment it contains.
+** \param     firmwareFile Firmware filename including its full path.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
 **
 ****************************************************************************************/
 static uint8_t SRecReaderFileOpen(char const * firmwareFile)
@@ -120,7 +124,7 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Closes the previously opened firmware file.
 **
 ****************************************************************************************/
 static void SRecReaderFileClose(void)
@@ -130,12 +134,17 @@ static void SRecReaderFileClose(void)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Obtains the total number of firmware data segments encountered in the
+**            firmware file. A firmware data segment consists of a consecutive block
+**            of firmware data. A firmware file always has at least one segment. However,
+**            it can have more as well. For example if there is a gap between the vector
+**            table and the other program data.
+** \return    Total number of firmware data segments present in the firmware file.
 **
 ****************************************************************************************/
-static uint16_t SRecReaderSegmentGetCount(void)
+static uint8_t SRecReaderSegmentGetCount(void)
 {
-  uint16_t result = 0;
+  uint8_t result = 0;
 
   /* TODO ##Vg Implement SRecReaderSegmentGetCount. */
 
@@ -145,13 +154,14 @@ static uint16_t SRecReaderSegmentGetCount(void)
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Opens the firmware data segment for reading. This should always be called
+**            before calling the SegmentGetNextData() function.
+** \param     idx Zero-based segment index. Valid values are between 0 and
+**            (SegmentGetCount() - 1).
 **
 ****************************************************************************************/
-static uint8_t SRecReaderSegmentOpen(uint16_t idx)
+static void SRecReaderSegmentOpen(uint8_t idx)
 {
-  uint8_t result = TBX_OK;
-
   /* Verify parameter. */
   TBX_ASSERT(idx < SRecReaderSegmentGetCount());
 
@@ -160,17 +170,22 @@ static uint8_t SRecReaderSegmentOpen(uint16_t idx)
   {
     /* TODO ##Vg Implement SRecReaderSegmentOpen. */
   }
-
-  /* Give the result back to the caller. */
-  return result;
 } /*** end of SRecReaderSegmentOpen ***/
 
 
 /************************************************************************************//**
-** \brief     ...
+** \brief     Obtains a data pointer to the next chunk of firmware data in the segment
+**            that was opened with function SegmentOpen(). The idea is that you first
+**            open the segment and afterwards you can keep calling this function to
+**            read out the segment's firmware data. When all data is read, len will be
+**            set to zero and a NULL pointer is returned.
+** \param     address The starting memory address of this chunk of firmware data is
+**            written to this pointer.
+** \param     len  The length of the firmware data chunk is written to this pointer.
+** \return    Data pointer to the read firmware if successul, NULL otherwise.
 **
 ****************************************************************************************/
-static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint32_t * len)
+static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len)
 {
   uint8_t const * result = NULL;
 

@@ -34,23 +34,23 @@
 /****************************************************************************************
 * Include files
 ****************************************************************************************/
-#include <ff.h>                                     /* FatFS                           */
-#include <microtbx.h>                               /* MicroTBX                        */
-#include <FreeRTOS.h>                               /* FreeRTOS                        */
-#include <task.h>                                   /* FreeRTOS tasks                  */
-#include <microblt.h>                               /* LibMicroBLT                     */
-#include "app.h"                                    /* application header              */
-#include "stm32f4xx_hal.h"                          /* HAL drivers                     */
+#include <microtbx.h>                       /* MicroTBX                                */
+#include <ff.h>                             /* FatFS                                   */
+#include <FreeRTOS.h>                       /* FreeRTOS                                */
+#include <task.h>                           /* FreeRTOS tasks                          */
+#include <microblt.h>                       /* LibMicroBLT                             */
+#include "app.h"                            /* Application header                      */
+#include "stm32f4xx_hal.h"                  /* HAL drivers                             */
 
 
 /****************************************************************************************
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO        (( UBaseType_t ) 8U)
+#define APP_TASK_PRIO                  ((UBaseType_t) 8U)
 
 /** \brief Priority of the LED blink task. */
-#define APP_LED_BLINK_PRIO   (( UBaseType_t ) 6U)
+#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t) 6U)
 
 
 /****************************************************************************************
@@ -80,7 +80,6 @@ void AppInit(void)
 {
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
-
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
@@ -93,7 +92,7 @@ void AppInit(void)
               "AppLedBlinkTask",
               configMINIMAL_STACK_SIZE,
               NULL,
-              APP_LED_BLINK_PRIO,
+              APP_LED_BLINK_TASK_PRIO,
               &appLedBlinkTaskHandle);
   /* Start the RTOS scheduler. */
   vTaskStartScheduler();
@@ -114,13 +113,19 @@ static void AppTask(void * pvParameters)
 
   /* Mount the file system, using logical disk 0 */
   f_mount(&fileSystem, "0:", 0);
+  /* Initialize the firmware module for reading S-record firmware files. */
+  BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
 
   /* Enter infinite task loop. */
   for (;;)
   {
+    /* TODO ##Vg Wait for the pushbutton pressed event to happen. */
+    /* TODO ##Vg Implement a pushbutton driver module (Init/Get). */
     vTaskDelay(10);
   }
 
+  /* Terminate the firmware module, if the code were to ever get here. */
+  BltFirmwareTerminate();
   /* Unregister work area prior to discarding it, if the code were to ever get here. */
   f_mount(NULL, "0:", 0);
 } /*** end of AppTask ***/
@@ -140,6 +145,7 @@ static void AppLedBlinkTask(void * pvParameters)
   /* Enter infinite task loop. */
   for (;;)
   {
+    /* TODO ##Vg Refactor the code by creating a seperate LED driver module. */
     /* Toggle the LED at a fixed interval. */
     vTaskDelay(ledToggleTicks);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
@@ -174,33 +180,6 @@ static void AppAssertionHandler(const char * const file, uint32_t line)
     ;
   }
 } /*** end of AppAssertionHandler ***/
-
-
-/************************************************************************************//**
-** \brief     FreeRTOS hook function that gets called when memory allocation failed.
-**
-****************************************************************************************/
-void vApplicationMallocFailedHook(void)
-{
-  /* Trigger an assertion for debugging purposes. */
-  TBX_ASSERT(TBX_ERROR);
-} /*** end of vApplicationMallocFailedHook ***/
-
-
-/************************************************************************************//**
-** \brief     FreeRTOS hook function that gets called when a stack overflow was detected.
-** \param     xTask Handle of the task that has a stack overflow.
-** \param     pcTaskName Name of the task that has a stack overflow.
-**
-****************************************************************************************/
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char * pcTaskName)
-{
-  TBX_UNUSED_ARG(xTask);
-  TBX_UNUSED_ARG(pcTaskName);
-
-  /* Trigger an assertion for debugging purposes. */
-  TBX_ASSERT(TBX_ERROR);
-} /*** end of vApplicationStackOverflowHook ***/
 
 
 /*********************************** end of app.c **************************************/

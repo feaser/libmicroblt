@@ -34,11 +34,12 @@
 /****************************************************************************************
 * Include files
 ****************************************************************************************/
+#include <ff.h>                                     /* FatFS                           */
+#include <microtbx.h>                               /* MicroTBX                        */
+#include <FreeRTOS.h>                               /* FreeRTOS                        */
+#include <task.h>                                   /* FreeRTOS tasks                  */
+#include <microblt.h>                               /* LibMicroBLT                     */
 #include "app.h"                                    /* application header              */
-#include "microblt.h"                               /* LibMicroBLT                     */
-#include "microtbx.h"                               /* MicroTBX                        */
-#include "FreeRTOS.h"                               /* FreeRTOS                        */
-#include "task.h"                                   /* FreeRTOS tasks                  */
 #include "stm32f4xx_hal.h"                          /* HAL drivers                     */
 
 
@@ -46,13 +47,17 @@
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO    (( UBaseType_t ) 8U)
+#define APP_TASK_PRIO        (( UBaseType_t ) 8U)
+
+/** \brief Priority of the LED blink task. */
+#define APP_LED_BLINK_PRIO   (( UBaseType_t ) 6U)
 
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
 static void AppTask(void * pvParameters);
+static void AppLedBlinkTask(void * pvParameters);
 static void AppAssertionHandler(const char * const file, uint32_t line);
 
 
@@ -62,19 +67,34 @@ static void AppAssertionHandler(const char * const file, uint32_t line);
 /** \brief Handle of the application task. */
 static TaskHandle_t appTaskHandle = NULL;
 
+/** \brief Handle of the LED blink task. */
+static TaskHandle_t appLedBlinkTaskHandle = NULL;
+
 
 /************************************************************************************//**
 ** \brief     Initializes the application. Should be called once during software program
 **            initialization.
-** \return    none.
 **
 ****************************************************************************************/
 void AppInit(void)
 {
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
+
   /* Create the application task. */
-  xTaskCreate(AppTask, "AppTask", configMINIMAL_STACK_SIZE, NULL, APP_TASK_PRIO, &appTaskHandle);
+  xTaskCreate(AppTask,
+              "AppTask",
+              configMINIMAL_STACK_SIZE + 128,
+              NULL,
+              APP_TASK_PRIO,
+              &appTaskHandle);
+  /* Create the LED blink task. */
+  xTaskCreate(AppLedBlinkTask,
+              "AppLedBlinkTask",
+              configMINIMAL_STACK_SIZE,
+              NULL,
+              APP_LED_BLINK_PRIO,
+              &appLedBlinkTaskHandle);
   /* Start the RTOS scheduler. */
   vTaskStartScheduler();
 } /*** end of AppInit ***/
@@ -83,10 +103,35 @@ void AppInit(void)
 /************************************************************************************//**
 ** \brief     Task function of the application.
 ** \param     pvParameters Pointer to optional task parameters
-** \return    none.
 **
 ****************************************************************************************/
 static void AppTask(void * pvParameters)
+{
+  /* File system object. This is the work area for the logical drive. */
+  FATFS fileSystem = { 0 };
+
+  TBX_UNUSED_ARG(pvParameters);
+
+  /* Mount the file system, using logical disk 0 */
+  f_mount(&fileSystem, "0:", 0);
+
+  /* Enter infinite task loop. */
+  for (;;)
+  {
+    vTaskDelay(10);
+  }
+
+  /* Unregister work area prior to discarding it, if the code were to ever get here. */
+  f_mount(NULL, "0:", 0);
+} /*** end of AppTask ***/
+
+
+/************************************************************************************//**
+** \brief     LED blink task function.
+** \param     pvParameters Pointer to optional task parameters
+**
+****************************************************************************************/
+static void AppLedBlinkTask(void * pvParameters)
 {
   const TickType_t ledToggleTicks = 500U / portTICK_PERIOD_MS;
 
@@ -99,7 +144,7 @@ static void AppTask(void * pvParameters)
     vTaskDelay(ledToggleTicks);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
   }
-} /*** end of AppTask ***/
+} /*** end of AppLedBlinkTask ***/
 
 
 /************************************************************************************//**

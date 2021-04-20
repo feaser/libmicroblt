@@ -1,3 +1,6 @@
 // list all sources for linting 
 microblt.c
+firmware.c
+srecreader.c
+
 

@@ -1,7 +1,7 @@
 /************************************************************************************//**
-* \file         microblt.c
-* \brief        LibMicroBLT source file.
-* \ingroup      Library
+* \file         firmware.c
+* \brief        Firmware file reader source file.
+* \ingroup      Firmware
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -36,68 +36,75 @@
 * Include files
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
-#include "microblt.h"                       /* LibMiroBLT                              */
 #include "firmware.h"                       /* Firmware reader module                  */
-#include "srecreader.h"                     /* S-record firmware file reader           */
 
 
 /* TODO ##Vg Implement missing functions:
- * -  MicroBltFirmwareFileOpen()
- * -  MicroBltFirmwareFileClose()
- * -  MicroBltFirmwareSegmentGetCount()
- * -  MicroBltFirmwareSegmentOpen()
- * -  MicroBltFirmwareSegmentGetNextData()
+ * -  FirmwareFileOpen()
+ * -  FirmwareFileClose()
+ * -  FirmwareSegmentGetCount()
+ * -  FirmwareSegmentOpen()
+ * -  FirmwareSegmentGetNextData()
  */
 
 /****************************************************************************************
-*             F I R M W A R E   F I L E   R E A D E R
+* Local data declarations
 ****************************************************************************************/
-/************************************************************************************//**
-** \brief     Initializes the firmware reader module for a specified firmware file
-**            reader. Typically called once upon application initialization.
-** \param     readerType The firmware file reader to use in this module. It should be a
-**            MICRO_BLT_FIRMWARE_READER_xxx value.
-**
-****************************************************************************************/
-void MicroBltFirmwareInit(uint8_t readerType)
-{
-  tFirmwareReader const * firmwareReader;
-
-  /* Process the reader type. */
-  switch (readerType)
-  {
-    /* Reader for S-record firmware files. */
-    case MICRO_BLT_FIRMWARE_READER_SRECORD:
-      firmwareReader = SRecReaderGet();
-      break;
-      /* Unsupported reader type specified. */
-    default:
-      firmwareReader = NULL;
-      break;
-  }
-
-  /* Verify that a valid firmware reader was set. */
-  TBX_ASSERT(firmwareReader != NULL)
-
-  /* Only continue if a valid firmware reader was set. */
-  if (firmwareReader != NULL)
-  {
-    /* Initialize the firmware reader module by linking the firmware file reader. */
-    FirmwareInit(firmwareReader);
-  }
-} /*** end of MicroBltFirmwareInit ***/
+/** \brief Pointer to the firmware reader that is linked. */
+static tFirmwareReader const * readerPtr = NULL;
 
 
 /************************************************************************************//**
-** \brief     Terminates the firmware reader module. Typically called at the end of the
-**            application when the firmware reader module is no longer needed.
+** \brief     Initializes the module.
+** \param     reader The firmware file reader to link.
 **
 ****************************************************************************************/
-void MicroBltFirmwareTerminate(void)
+void FirmwareInit(tFirmwareReader const * reader)
 {
-  /* Terminate the firmware reader module. */
-  FirmwareTerminate();
-} /*** end of MicroBltFirmwareTerminate ***/
+  /* Verify parameter. */
+  TBX_ASSERT(reader != NULL);
+
+  /* Only continue with valid parameter. */
+  if (reader != NULL)
+  {
+    /* Link the firmware reader. */
+    readerPtr = reader;
+    /* Verify the reader's function pointer. */
+    TBX_ASSERT(reader->Init != NULL);
+    /* Only continue with a valid function pointer. */
+    if (reader->Init != NULL)
+    {
+      /* Initialize the reader. */
+      reader->Init();
+    }
+  }
+} /*** end of FirmwareInit **/
 
 
-/*********************************** end of microblt.c *********************************/
+/************************************************************************************//**
+** \brief     Terminates the module.
+**
+****************************************************************************************/
+void FirmwareTerminate(void)
+{
+  /* Verify the firmware reader. */
+  TBX_ASSERT(readerPtr != NULL);
+
+  /* Only continue with a valid firmware reader. */
+  if (readerPtr != NULL)
+  {
+    /* Verify the reader's function pointer. */
+    TBX_ASSERT(readerPtr->Terminate != NULL);
+    /* Only continue with a valid function pointer. */
+    if (readerPtr->Terminate != NULL)
+    {
+      /* Terminate the reader. */
+      readerPtr->Terminate();
+    }
+    /* Unlink the firmware reader. */
+    readerPtr = NULL;
+  }
+} /*** end of FirmwareTerminate ***/
+
+
+/*********************************** end of firmware.c *********************************/

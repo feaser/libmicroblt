@@ -1,7 +1,7 @@
 /************************************************************************************//**
-* \file         microblt.h
-* \brief        LibMicroBLT header file.
-* \ingroup      Library
+* \file         firmware.h
+* \brief        Firmware file reader header file.
+* \ingroup      Firmware
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -32,59 +32,63 @@
 * \endinternal
 ****************************************************************************************/
 /************************************************************************************//**
-* \defgroup   Library Library API
-* \brief      LibMicroBLT API
+* \defgroup   Firmware Firmware Reader Module
+* \brief      Module with functionality to load firmware data from a file.
+* \ingroup    Library
 * \details
-* The Library API contains the application programming interface for the LibMicroBLT
-* library. It defines the functions and definitions that a microcontroler application
-* uses to access the library's functionality.
-* LibMicroBLT contains functionality for communicating with and performing a firmware
-* update on another microcontroller, which runs the OpenBLT bootloader.
+* The Firmwarwe reader module contains functionality to load firmware data from a file.
+* It contains an interface for linking firmware file parsers that handle the parsing
+* of firmware data from a file in the correct format. For example the Motorola S-record
+* format.
 ****************************************************************************************/
-#ifndef MICROBLT_H
-#define MICROBLT_H
+#ifndef FIRMWARE_H
+#define FIRMWARE_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /****************************************************************************************
-*             V E R S I O N   I N F O R M A T I O N
+* Type definitions
 ****************************************************************************************/
-/** \brief Main version number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_MAIN                   (0U)
-
-/** \brief Minor version number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_MINOR                  (1U)
-
-/** \brief Patch number of LibMicroBLT. */
-#define MICRO_BLT_VERSION_PATCH                  (0U)
-
-
-/****************************************************************************************
-*             F I R M W A R E   F I L E   R E A D E R
-****************************************************************************************/
-/****************************************************************************************
-* Macro definitions
-****************************************************************************************/
-/** \brief The S-record reader enables reading firmware data from a file formatted as
- *         a Motorola S-record. This is a widely known file format and pretty much all
- *         microcontroller compiler toolchains included functionality to output or
- *         convert the firmware's data as an S-record.
+/** \brief Firmware file reader. It provides the API interface for linking specific
+ * firmware file type readers. For example a reader for S-records.
  */
-#define MICRO_BLT_FIRMWARE_READER_SRECORD        ((uint8_t)0u)
+typedef struct
+{
+  /** \brief Initializes the firmware reader. */
+  void            (* Init) (void);
+
+  /** \brief Terminates the firmware reader. */
+  void            (* Terminate) (void);
+
+  /** \brief Opens the firmware file for reading. */
+  uint8_t         (* FileOpen) (char const * firmwareFile);
+
+  /** \brief Closes an opened firmware file. */
+  void            (* FileClose) (void);
+
+  /** \brief Obtain the number of firmware data segments detected in the file. */
+  uint16_t        (* SegmentGetCount) (void);
+
+  /** \brief Opens a firmware data segment for reading. */
+  uint8_t         (* SegmentOpen) (uint16_t idx);
+
+  /** \brief Obtains a data point to the segment's next chunk of firmware data. */
+  uint8_t const * (* SegmentGetNextData) (uint32_t * address, uint32_t * len);
+} tFirmwareReader;
 
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void MicroBltFirmwareInit(uint8_t readerType);
-void MicroBltFirmwareTerminate(void);
+void FirmwareInit(tFirmwareReader const * reader);
+void FirmwareTerminate(void);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MICROBLT_H */
-/*********************************** end of microblt.h *********************************/
+#endif /* FIRMWARE_H */
+/*********************************** end of firmware.h *********************************/

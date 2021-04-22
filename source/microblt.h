@@ -78,13 +78,16 @@ extern "C" {
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void            BltFirmwareInit(uint8_t readerType);
-void            BltFirmwareTerminate(void);
-uint8_t         BltFirmwareFileOpen(char const * firmwareFile);
-void            BltFirmwareFileClose(void);
-uint8_t         BltFirmwareSegmentGetCount(void);
-void            BltFirmwareSegmentOpen(uint8_t idx);
-uint8_t const * BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len);
+void     BltFirmwareInit(uint8_t readerType);
+void     BltFirmwareTerminate(void);
+uint8_t  BltFirmwareFileOpen(char const * firmwareFile);
+void     BltFirmwareFileClose(void);
+uint32_t BltFirmwareGetTotalSize(void);
+uint8_t  BltFirmwareSegmentGetCount(void);
+void     BltFirmwareSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len);
+void     BltFirmwareSegmentOpen(uint8_t idx);
+void     BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len,
+                                       uint8_t * buffer, uint16_t bufferSize);
 
 
 #ifdef __cplusplus

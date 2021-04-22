@@ -40,6 +40,7 @@
 #include <task.h>                           /* FreeRTOS tasks                          */
 #include <microblt.h>                       /* LibMicroBLT                             */
 #include "app.h"                            /* Application header                      */
+#include "led.h"                            /* LED driver                              */
 #include "stm32f4xx_hal.h"                  /* HAL drivers                             */
 
 
@@ -80,6 +81,8 @@ void AppInit(void)
 {
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
+  /* Initialize the LED driver. */
+  LedInit();
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
@@ -145,10 +148,9 @@ static void AppLedBlinkTask(void * pvParameters)
   /* Enter infinite task loop. */
   for (;;)
   {
-    /* TODO ##Vg Refactor the code by creating a seperate LED driver module. */
     /* Toggle the LED at a fixed interval. */
     vTaskDelay(ledToggleTicks);
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
+    LedToggleState();
   }
 } /*** end of AppLedBlinkTask ***/
 

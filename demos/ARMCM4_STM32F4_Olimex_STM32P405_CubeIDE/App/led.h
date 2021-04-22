@@ -1,6 +1,6 @@
 /************************************************************************************//**
-* \file         app.h
-* \brief        Application header file.
+* \file         led.h
+* \brief        LED driver header file.
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -30,22 +30,35 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef APP_H
-#define APP_H
+#ifndef LED_H
+#define LED_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /****************************************************************************************
+* Type definitions
+****************************************************************************************/
+typedef enum
+{
+  LED_STATE_OFF,
+  LED_STATE_ON
+} tLedState;
+
+
+/****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void AppInit(void);
+void      LedInit(void);
+void      LedSetState(tLedState state);
+tLedState LedGetState(void);
+void      LedToggleState(void);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* APP_H */
-/*********************************** end of app.h **************************************/
+#endif /* LED_H */
+/*********************************** end of led.h **************************************/

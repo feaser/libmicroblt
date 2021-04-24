@@ -62,12 +62,12 @@ void FirmwareInit(tFirmwareReader const * reader)
     /* Link the firmware reader. */
     readerPtr = reader;
     /* Verify the reader's function pointer. */
-    TBX_ASSERT(reader->Init != NULL);
+    TBX_ASSERT(readerPtr->Init != NULL);
     /* Only continue with a valid function pointer. */
-    if (reader->Init != NULL)
+    if (readerPtr->Init != NULL)
     {
       /* Initialize the reader. */
-      reader->Init();
+      readerPtr->Init();
     }
   }
 } /*** end of FirmwareInit **/

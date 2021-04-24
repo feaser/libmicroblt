@@ -55,10 +55,52 @@ extern "C" {
 #define BLT_VERSION_MAIN                    ((uint8_t)0U)
 
 /** \brief Minor version number of LibMicroBLT. */
-#define BLT_VERSION_MINOR                   ((uint8_t)1U)
+#define BLT_VERSION_MINOR                   ((uint8_t)9U)
 
 /** \brief Patch number of LibMicroBLT. */
 #define BLT_VERSION_PATCH                   ((uint8_t)0U)
+
+
+/****************************************************************************************
+*             S E S S I O N   L A Y E R S
+****************************************************************************************/
+/****************************************************************************************
+* Macro definitions
+****************************************************************************************/
+/** \brief XCP protocol version 1.0. XCP is a universal measurement and calibration
+ *         communication protocol. It contains functionality for reading, programming,
+ *         and erasing (non-volatile) memory making it a good fit for bootloader
+ *         purposes.
+ */
+#define BLT_SESSION_XCP_V10                 ((uint32_t)0U)
+
+
+/****************************************************************************************
+* Type definitions
+****************************************************************************************/
+/** \brief Structure layout of the XCP version 1.0 session settings. */
+typedef struct
+{
+  uint16_t timeoutT1;            /**< Command response timeout in milliseconds.        */
+  uint16_t timeoutT3;            /**< Start programming timeout in milliseconds.       */
+  uint16_t timeoutT4;            /**< Erase memory timeout in milliseconds.            */
+  uint16_t timeoutT5;            /**< Program memory and reset timeout in milliseconds.*/
+  uint16_t timeoutT6;            /**< Connect response timeout in milliseconds.        */
+  uint16_t timeoutT7;            /**< Busy wait timer timeout in milliseonds.          */
+  uint8_t  connectMode;          /**< Connection mode parameter in XCP connect command.*/
+} tBltSessionSettingsXcpV10;
+
+
+/****************************************************************************************
+* Function prototypes
+****************************************************************************************/
+void    BltSessionInit(uint32_t type, void const * settings);
+void    BltSessionTerminate(void);
+uint8_t BltSessionStart(void);
+void    BltSessionStop(void);
+uint8_t BltSessionClearMemory(uint32_t address, uint32_t len);
+uint8_t BltSessionWriteData(uint32_t address, uint32_t len, uint8_t const * data);
+uint8_t BltSessionReadData(uint32_t address, uint32_t len, uint8_t * data);
 
 
 /****************************************************************************************

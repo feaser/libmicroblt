@@ -37,8 +37,184 @@
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
 #include "microblt.h"                       /* LibMiroBLT                              */
+#include "session.h"                        /* Communication session module            */
+#include "xcploader.h"                      /* XCP loader module                       */
 #include "firmware.h"                       /* Firmware reader module                  */
 #include "srecreader.h"                     /* S-record firmware file reader           */
+
+
+/****************************************************************************************
+*             S E S S I O N   L A Y E R S
+****************************************************************************************/
+/************************************************************************************//**
+** \brief     Initializes the firmware update session for a specific communication
+**            protocol. This function is typically called once at the start of the
+**            firmware update.
+** \param     type The communication protocol to use for this session. It should
+**            be a BLT_SESSION_xxx value.
+** \param     settings Pointer to a structure with communication protocol specific
+**            settings.
+**
+****************************************************************************************/
+void BltSessionInit(uint32_t type, void const * settings)
+{
+  /* Check parameters. Note that the settings-pointers are allowed to be NULL in case
+   * no additional settings are needed for the specified session or transport type.
+   */
+  TBX_ASSERT(type == BLT_SESSION_XCP_V10);
+
+  /* Initialize the correct session. */
+  if (type == BLT_SESSION_XCP_V10)
+  {
+    /* Verify settings parameter because the XCP loader requires them. */
+    TBX_ASSERT(settings != NULL);
+    /* Only continue if the settings parameter is valid. */
+    if (settings != NULL)
+    {
+      /* Cast session settings to the correct type. */
+      tBltSessionSettingsXcpV10 const * bltSessionSettingsXcpV10Ptr = settings;
+      /* Convert session settings to the format supported by the XCP loader module. */
+      tXcpLoaderSettings xcpLoaderSettings;
+      xcpLoaderSettings.timeoutT1   = bltSessionSettingsXcpV10Ptr->timeoutT1;
+      xcpLoaderSettings.timeoutT3   = bltSessionSettingsXcpV10Ptr->timeoutT3;
+      xcpLoaderSettings.timeoutT4   = bltSessionSettingsXcpV10Ptr->timeoutT4;
+      xcpLoaderSettings.timeoutT5   = bltSessionSettingsXcpV10Ptr->timeoutT5;
+      xcpLoaderSettings.timeoutT6   = bltSessionSettingsXcpV10Ptr->timeoutT6;
+      xcpLoaderSettings.timeoutT7   = bltSessionSettingsXcpV10Ptr->timeoutT7;
+      xcpLoaderSettings.connectMode = bltSessionSettingsXcpV10Ptr->connectMode;
+      /* Perform actual session initialization. */
+      SessionInit(XcpLoaderGetProtocol(), &xcpLoaderSettings);
+    }
+  }
+} /*** end of BltSessionInit ***/
+
+
+/************************************************************************************//**
+** \brief     Terminates the firmware update session. This function is typically called
+**            once at the end of the firmware update.
+**
+****************************************************************************************/
+void BltSessionTerminate(void)
+{
+  /* Terminate the session. */
+  SessionTerminate();
+} /*** end of BltSessionTerminate ***/
+
+
+/************************************************************************************//**
+** \brief     Starts the firmware update session. This is were the library attempts to
+**            activate and connect with the bootloader running on the target, through
+**            the transport layer that was specified during the session's initialization.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t BltSessionStart(void)
+{
+  uint8_t result;
+
+  /* Attempt to start the session. */
+  result = SessionStart();
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of BltSessionStart ***/
+
+
+/************************************************************************************//**
+** \brief     Stops the firmware update session. This is there the library disconnects
+**            the transport layer as well.
+**
+****************************************************************************************/
+void BltSessionStop(void)
+{
+  /* Stop the session. */
+  SessionStop();
+} /*** end of BltSessionStop ***/
+
+
+/************************************************************************************//**
+** \brief     Requests the target to erase the specified range of memory on the target.
+**            Note that the target automatically aligns this to the erasable memory
+**            block sizes. This typically results in more memory being erased than the
+**            range that was specified here. Refer to the target implementation for
+**            details.
+** \param     address The starting memory address for the erase operation.
+** \param     len The total number of bytes to erase from memory.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t BltSessionClearMemory(uint32_t address, uint32_t len)
+{
+  uint8_t result = TBX_OK;
+
+  /* Check parameters. */
+  TBX_ASSERT(len > 0U);
+
+  /* Only continue if the parameters are valid. */
+  if (len > 0U)
+  {
+    /* Pass the request on to the session module. */
+    result = SessionClearMemory(address, len);
+  }
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of BltSessionClearMemory ***/
+
+
+/************************************************************************************//**
+** \brief     Requests the target to program the specified data to memory. Note that it
+**            is the responsibility of the application to make sure the memory range was
+**            erased beforehand.
+** \param     address The starting memory address for the write operation.
+** \param     len The number of bytes in the data buffer that should be written.
+** \param     data Pointer to the byte array with data to write.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t BltSessionWriteData(uint32_t address, uint32_t len, uint8_t const * data)
+{
+  uint8_t result = TBX_ERROR;
+
+  /* Check parameters. */
+  TBX_ASSERT((data != NULL) && (len > 0U));
+
+  /* Only continue if the parameters are valid. */
+  if ((data != NULL) && (len > 0U))
+  {
+    /* Pass the request on to the session module. */
+    result = SessionWriteData(address, len, data);
+  }
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of BltSessionWriteData ***/
+
+
+/************************************************************************************//**
+** \brief     Requests the target to upload the specified range from memory and store its
+**            contents in the specified data buffer.
+** \param     address The starting memory address for the read operation.
+** \param     len The number of bytes to upload from the target and store in the data
+**            buffer.
+** \param     data Pointer to the byte array where the uploaded data should be stored.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t BltSessionReadData(uint32_t address, uint32_t len, uint8_t * data)
+{
+  uint8_t result = TBX_ERROR;
+
+  /* Check parameters. */
+  TBX_ASSERT((data != NULL) && (len > 0U));
+
+  /* Only continue if the parameters are valid. */
+  if ((data != NULL) && (len > 0U))
+  {
+    /* Pass the request on to the session module. */
+    result = SessionReadData(address, len, data);
+  }
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of BltSessionReadData ***/
 
 
 /****************************************************************************************

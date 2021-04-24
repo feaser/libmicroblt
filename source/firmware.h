@@ -57,44 +57,42 @@ extern "C" {
 typedef struct
 {
   /** \brief Initializes the firmware reader. */
-  void    (* Init) (void);
+  void            (* Init) (void);
 
   /** \brief Terminates the firmware reader. */
-  void    (* Terminate) (void);
+  void            (* Terminate) (void);
 
   /** \brief Opens the firmware file for reading. */
-  uint8_t (* FileOpen) (char const * firmwareFile);
+  uint8_t         (* FileOpen) (char const * firmwareFile);
 
   /** \brief Closes an opened firmware file. */
-  void    (* FileClose) (void);
+  void            (* FileClose) (void);
 
   /** \brief Obtain the number of firmware data segments detected in the file. */
-  uint8_t (* SegmentGetCount) (void);
+  uint8_t         (* SegmentGetCount) (void);
 
   /** \brief Obtain start address and length of a specific segment. */
-  void    (* SegmentGetInfo) (uint8_t idx, uint32_t * address, uint32_t * len);
+  uint32_t        (* SegmentGetInfo) (uint8_t idx, uint32_t * address);
 
   /** \brief Opens a firmware data segment for reading. */
-  void    (* SegmentOpen) (uint8_t idx);
+  void            (* SegmentOpen) (uint8_t idx);
 
-  /** \brief Obtains the segment's next chunk of firmware data. */
-  void    (* SegmentGetNextData) (uint32_t * address, uint16_t * len,
-                                  uint8_t * buffer, uint16_t bufferSize);
+  /** \brief Obtains a data point to the segment's next chunk of firmware data. */
+  uint8_t const * (* SegmentGetNextData) (uint32_t * address, uint16_t * len);
 } tFirmwareReader;
 
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void    FirmwareInit(tFirmwareReader const * reader);
-void    FirmwareTerminate(void);
-uint8_t FirmwareFileOpen(char const * firmwareFile);
-void    FirmwareFileClose(void);
-uint8_t FirmwareSegmentGetCount(void);
-void    FirmwareSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len);
-void    FirmwareSegmentOpen(uint8_t idx);
-void    FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len,
-                                   uint8_t * buffer, uint16_t bufferSize);
+void            FirmwareInit(tFirmwareReader const * reader);
+void            FirmwareTerminate(void);
+uint8_t         FirmwareFileOpen(char const * firmwareFile);
+void            FirmwareFileClose(void);
+uint8_t         FirmwareSegmentGetCount(void);
+uint32_t        FirmwareSegmentGetInfo(uint8_t idx, uint32_t * address);
+void            FirmwareSegmentOpen(uint8_t idx);
+uint8_t const * FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len);
 
 
 #ifdef __cplusplus

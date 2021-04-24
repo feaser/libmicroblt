@@ -44,15 +44,14 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-static void    SRecReaderInit(void);
-static void    SRecReaderTerminate(void);
-static uint8_t SRecReaderFileOpen(char const * firmwareFile);
-static void    SRecReaderFileClose(void);
-static uint8_t SRecReaderSegmentGetCount(void);
-static void    SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len);
-static void    SRecReaderSegmentOpen(uint8_t idx);
-static void    SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len,
-                                            uint8_t * buffer, uint16_t bufferSize);
+static void            SRecReaderInit(void);
+static void            SRecReaderTerminate(void);
+static uint8_t         SRecReaderFileOpen(char const * firmwareFile);
+static void            SRecReaderFileClose(void);
+static uint8_t         SRecReaderSegmentGetCount(void);
+static uint32_t        SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address);
+static void            SRecReaderSegmentOpen(uint8_t idx);
+static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
 
 
 /***********************************************************************************//**
@@ -164,23 +163,25 @@ static uint8_t SRecReaderSegmentGetCount(void)
 **            (SegmentGetCount() - 1).
 ** \param     address The base memory address of the segment's data is written to this
 **            pointer.
-** \param     len The total number of data bytes inside this segment is written to this
-**            pointer.
+** \return    The total number of data bytes inside this segment.
 **
 ****************************************************************************************/
-static void SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len)
+static uint32_t SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
 {
+  uint32_t result = 0U;
+
   /* Verify parameters. */
-  TBX_ASSERT((idx < SRecReaderSegmentGetCount()) && (address != NULL) && (len != NULL));
+  TBX_ASSERT((idx < SRecReaderSegmentGetCount()) && (address != NULL));
 
   /* Only continue with valid parameters. */
-  if ((idx < SRecReaderSegmentGetCount()) && (address != NULL) && (len != NULL))
+  if ((idx < SRecReaderSegmentGetCount()) && (address != NULL))
   {
     /* TODO ##Vg Implement SRecReaderSegmentGetInfo. */
     *address = 0U;
-    *len = 0U;
   }
 
+  /* Give the result back to the caller. */
+  return result;
 } /*** end of SRecReaderSegmentGetInfo ***/
 
 
@@ -205,34 +206,34 @@ static void SRecReaderSegmentOpen(uint8_t idx)
 
 
 /************************************************************************************//**
-** \brief     Reads and stores the next chunk of firmware data in the segment that was
-**            opened with function SegmentOpen(). The idea is that you first
+** \brief     Obtains a data pointer to the next chunk of firmware data in the segment
+**            that was opened with function SegmentOpen(). The idea is that you first
 **            open the segment and afterwards you can keep calling this function to
 **            read out the segment's firmware data. When all data is read, len will be
-**            set to zero. The firmware data is stored in the provided buffer. The
-**            bufferSize parameter informs this function of how many bytes can be stored
-**            in the buffer.
+**            set to zero and a NULL pointer is returned.
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
-** \param     len The length of the firmware data chunk is written to this pointer.
-** \param     buffer Byte array where this function will store the read data bytes.
-** \param     bufferSize Maximum number of bytes that can be stored in the buffer.
+** \param     len  The length of the firmware data chunk is written to this pointer.
+** \return    Data pointer to the read firmware if successul, NULL otherwise.
 **
 ****************************************************************************************/
-static void SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len,
-                                         uint8_t * buffer, uint16_t bufferSize)
+static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len)
 {
+  uint8_t const * result = NULL;
+
   /* Verify parameters. */
-  TBX_ASSERT((address != NULL) && (len != NULL) && (buffer != NULL) && (bufferSize >0U));
+  TBX_ASSERT((address != NULL) && (len != NULL));
 
   /* Only continue with valid parameters. */
-  if ((address != NULL) && (len != NULL) && (buffer != NULL) && (bufferSize > 0U))
+  if ((address != NULL) && (len != NULL))
   {
     /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
-    *address = 0U;
-    *len = 0U;
-    buffer[0] = 0U;
+    *address = 0;
+    *len = 0;
   }
+
+  /* Give the result back to the caller. */
+  return result;
 } /*** end of SRecReaderSegmentGetNextData ***/
 
 

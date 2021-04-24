@@ -128,15 +128,12 @@ uint32_t BltFirmwareGetTotalSize(void)
   uint32_t result = 0U;
   uint8_t  segmentIdx;
   uint32_t segmentAddress = 0U;
-  uint32_t segmentLen = 0U;
 
   /* Loop through all segments. */
   for (segmentIdx = 0; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
   {
-    /* Obtain info about the next segment. */
-    BltFirmwareSegmentGetInfo(segmentIdx, &segmentAddress, &segmentLen);
-    /* Update the total size. */
-    result += segmentLen;
+    /* Obtain info about the next segment and add the segment's length to the result. */
+    result += BltFirmwareSegmentGetInfo(segmentIdx, &segmentAddress);
   }
 
   /* Give the result back to the caller. */
@@ -168,14 +165,13 @@ uint8_t BltFirmwareSegmentGetCount(void)
 **            (SegmentGetCount() - 1).
 ** \param     address The base memory address of the segment's data is written to this
 **            pointer.
-** \param     len The total number of data bytes inside this segment is written to this
-**            pointer.
+** \return    The total number of data bytes inside this segment.
 **
 ****************************************************************************************/
-void BltFirmwareSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len)
+uint32_t BltFirmwareSegmentGetInfo(uint8_t idx, uint32_t * address)
 {
   /* Pass the request on to the firmware reader module. */
-  FirmwareSegmentGetInfo(idx, address, len);
+  return FirmwareSegmentGetInfo(idx, address);
 } /*** end of BltFirmwareSegmentGetInfo ***/
 
 
@@ -194,25 +190,21 @@ void BltFirmwareSegmentOpen(uint8_t idx)
 
 
 /************************************************************************************//**
-** \brief     Reads and stores the next chunk of firmware data in the segment that was
-**            opened with function SegmentOpen(). The idea is that you first
+** \brief     Obtains a data pointer to the next chunk of firmware data in the segment
+**            that was opened with function SegmentOpen(). The idea is that you first
 **            open the segment and afterwards you can keep calling this function to
 **            read out the segment's firmware data. When all data is read, len will be
-**            set to zero. The firmware data is stored in the provided buffer. The
-**            bufferSize parameter informs this function of how many bytes can be stored
-**            in the buffer.
+**            set to zero and a NULL pointer is returned.
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
-** \param     len The length of the firmware data chunk is written to this pointer.
-** \param     buffer Byte array where this function will store the read data bytes.
-** \param     bufferSize Maximum number of bytes that can be stored in the buffer.
+** \param     len  The length of the firmware data chunk is written to this pointer.
+** \return    Data pointer to the read firmware if successul, NULL otherwise.
 **
 ****************************************************************************************/
-void BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len,
-                                   uint8_t * buffer, uint16_t bufferSize)
+uint8_t const * BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len)
 {
   /* Pass the request on to the firmware reader module. */
-  FirmwareSegmentGetNextData(address, len, buffer, bufferSize);
+  return FirmwareSegmentGetNextData(address, len);
 } /*** end of BltFirmwareSegmentGetNextData ***/
 
 

@@ -204,17 +204,18 @@ uint8_t FirmwareSegmentGetCount(void)
 **            (SegmentGetCount() - 1).
 ** \param     address The base memory address of the segment's data is written to this
 **            pointer.
-** \param     len The total number of data bytes inside this segment is written to this
-**            pointer.
+** \return    The total number of data bytes inside this segment.
 **
 ****************************************************************************************/
-void FirmwareSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len)
+uint32_t FirmwareSegmentGetInfo(uint8_t idx, uint32_t * address)
 {
+  uint32_t result = 0U;
+
   /* Verify parameters. */
-  TBX_ASSERT((idx < FirmwareSegmentGetCount()) && (address != NULL) && (len != NULL));
+  TBX_ASSERT((idx < FirmwareSegmentGetCount()) && (address != NULL));
 
   /* Only continue with valid parameters. */
-  if ((idx < FirmwareSegmentGetCount()) && (address != NULL) && (len != NULL))
+  if ((idx < FirmwareSegmentGetCount()) && (address != NULL))
   {
     /* Verify the firmware reader. */
     TBX_ASSERT(readerPtr != NULL);
@@ -228,10 +229,13 @@ void FirmwareSegmentGetInfo(uint8_t idx, uint32_t * address, uint32_t * len)
       if (readerPtr->SegmentGetInfo != NULL)
       {
         /* Obtains the segment info. */
-        readerPtr->SegmentGetInfo(idx, address, len);
+        result = readerPtr->SegmentGetInfo(idx, address);
       }
     }
   }
+
+  /* Give the result back to the caller. */
+  return result;
 } /*** end of FirmwareSegmentGetInfo ***/
 
 
@@ -270,28 +274,26 @@ void FirmwareSegmentOpen(uint8_t idx)
 
 
 /************************************************************************************//**
-** \brief     Reads and stores the next chunk of firmware data in the segment that was
-**            opened with function SegmentOpen(). The idea is that you first
+** \brief     Obtains a data pointer to the next chunk of firmware data in the segment
+**            that was opened with function SegmentOpen(). The idea is that you first
 **            open the segment and afterwards you can keep calling this function to
 **            read out the segment's firmware data. When all data is read, len will be
-**            set to zero. The firmware data is stored in the provided buffer. The
-**            bufferSize parameter informs this function of how many bytes can be stored
-**            in the buffer.
+**            set to zero and a NULL pointer is returned.
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
-** \param     len The length of the firmware data chunk is written to this pointer.
-** \param     buffer Byte array where this function will store the read data bytes.
-** \param     bufferSize Maximum number of bytes that can be stored in the buffer.
+** \param     len  The length of the firmware data chunk is written to this pointer.
+** \return    Data pointer to the read firmware if successul, NULL otherwise.
 **
 ****************************************************************************************/
-void FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len,
-                                uint8_t * buffer, uint16_t bufferSize)
+uint8_t const * FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len)
 {
+  uint8_t const * result = NULL;
+
   /* Verify parameters. */
-  TBX_ASSERT((address != NULL) && (len != NULL) && (buffer != NULL) && (bufferSize >0U));
+  TBX_ASSERT((address != NULL) && (len != NULL));
 
   /* Only continue with valid parameters. */
-  if ((address != NULL) && (len != NULL) && (buffer != NULL) && (bufferSize > 0U))
+  if ((address != NULL) && (len != NULL))
   {
     /* Verify the firmware reader. */
     TBX_ASSERT(readerPtr != NULL);
@@ -304,11 +306,15 @@ void FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len,
       /* Only continue with a valid function pointer. */
       if (readerPtr->SegmentGetNextData != NULL)
       {
-        /* Read the next chunk of firmware data from the opened segment. */
-        readerPtr->SegmentGetNextData(address, len, buffer, bufferSize);
+        /* Attempt to read the next chunk of firmware data from the opened segment. */
+        result = readerPtr->SegmentGetNextData(address, len);
       }
     }
   }
+
+  /* Give the result back to the caller. */
+  return result;
+
 } /*** end of FirmwareSegmentGetNextData ***/
 
 

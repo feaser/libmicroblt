@@ -199,7 +199,7 @@ size-options.lnt // This .lnt file should be generated (preferrably
 -esym(9045,*tm)
 -esym(9045,*sched_param)
 -esym(9045,*__locale_struct)
-
+-esym(9045, *_reent)
 -esym(528,__huge_val,__nan,__qnan,__qnanf,__snan,__snanf)
                        // We don't care if we don't reference some GNU functions
 -esym(528,__gnu_malloc,__gnu_calloc)

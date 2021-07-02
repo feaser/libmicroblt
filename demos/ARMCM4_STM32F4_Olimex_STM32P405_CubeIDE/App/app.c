@@ -86,7 +86,7 @@ void AppInit(void)
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
-              configMINIMAL_STACK_SIZE + 128,
+              configMINIMAL_STACK_SIZE + 256,
               NULL,
               APP_TASK_PRIO,
               &appTaskHandle);
@@ -118,6 +118,10 @@ static void AppTask(void * pvParameters)
   f_mount(&fileSystem, "0:", 0);
   /* Initialize the firmware module for reading S-record firmware files. */
   BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
+
+  /* TODO ##Vg Temporarily added for testing, before button press implementation. */
+  (void)BltFirmwareFileOpen("demoprog.srec");
+  BltFirmwareFileClose();
 
   /* Enter infinite task loop. */
   for (;;)

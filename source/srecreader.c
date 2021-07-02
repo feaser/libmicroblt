@@ -37,8 +37,38 @@
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
 #include <ff.h>                             /* FatFS                                   */
+#include <string.h>                         /* C library string handling               */
 #include "firmware.h"                       /* Firmware reader module                  */
 #include "srecreader.h"                     /* S-record firmware file reader           */
+
+
+/****************************************************************************************
+* Macro definitions
+****************************************************************************************/
+/** \brief Size of the byte buffer for storing a line from the S-record file. */
+#define SREC_LINE_BUFFER_SIZE          (256)
+
+/** \brief Size of the byte buffer to store firmware data extracted from an S-record.*/
+#define SREC_DATA_BUFFER_SIZE          (512)
+
+
+/****************************************************************************************
+* Type definitions
+****************************************************************************************/
+/** \brief Structure that represents the handle to the S-record file, which groups all
+ *         its relevent data.
+ */
+typedef struct
+{
+  /** \brief FatFS file object handle. */
+  FIL      file;
+  /** \brief Byte buffer for storing a line from the S-record file. */
+  TCHAR    lineBuf[SREC_LINE_BUFFER_SIZE];
+  /** \brief Byte buffer for storing data extracted from an S-record. */
+  uint8_t  dataBuf[SREC_DATA_BUFFER_SIZE];
+  /** \brief Maximum number of firmware data bytes on the longest S-record line. */
+  uint16_t maxLineData;
+} tSRecHandle;
 
 
 /****************************************************************************************
@@ -52,6 +82,13 @@ static uint8_t         SRecReaderSegmentGetCount(void);
 static uint32_t        SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address);
 static void            SRecReaderSegmentOpen(uint8_t idx);
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
+
+
+/****************************************************************************************
+* Local data declarations
+****************************************************************************************/
+/** \brief Handle to the S-record file. */
+static tSRecHandle srecHandle;
 
 
 /***********************************************************************************//**
@@ -86,6 +123,9 @@ tFirmwareReader const * SRecReaderGet(void)
 ****************************************************************************************/
 static void SRecReaderInit(void)
 {
+  /* Initialize the file handle to its reset value. */
+  memset(&srecHandle, 0, sizeof(srecHandle));
+
   /* TODO ##Vg Implement SRecReaderInit. */
 } /*** end of SRecReaderInit ***/
 
@@ -117,7 +157,60 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
   /* Only continue with valid parameter. */
   if (firmwareFile != NULL)
   {
-    /* TODO ##Vg Implement SRecReaderFileOpen. */
+    /* Open the file for reading. */
+    if (f_open(&srecHandle.file, firmwareFile, FA_READ) != FR_OK)
+    {
+      /* Could not open the file. Update the result to flag this problem. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if the file was successfully opened. */
+    if (result == TBX_OK)
+    {
+      /* Reset max line data counter. */
+      srecHandle.maxLineData = 0U;
+      /* Loop to read all the lines in the file one at a time. */
+      for (;;)
+      {
+        /* Attempt to read the next line from the file */
+        if (f_gets(srecHandle.lineBuf, SREC_LINE_BUFFER_SIZE, &srecHandle.file) == NULL)
+        {
+          /* An error occured or we reached the end of the file. Was it an error? */
+          if (f_error(&srecHandle.file) > 0U)
+          {
+            /* Close the file and update the result to flag this problem. */
+            (void)f_close(&srecHandle.file);
+            result = TBX_ERROR;
+          }
+          /* Stop looping when an error occurred or we reached the end of the file. */
+          break;
+        }
+        /* TODO ##Vg Continue here by processing the line. Need to keep the TCHAR stuff
+         * in mind though for unicode stuff. As a next step I need to extract the
+         * address and data length from the line. And I need to implement the segment
+         * linked list. Probably also need to keep track of the file pointer before
+         * reading the line, to be able to track the file pointer at the start of a
+         * segment.
+         */
+      }
+    }
+
+    /* TODO ##Vg Implement SRecReaderFileOpen.
+     * - Open the file
+     * - Read all lines one at a time
+     * - Keep track of the size of the longest s-record line in the file
+     * - Determine segment info:
+     *   - file pointer to the first s-record in the file
+     *   - base address
+     *   - length
+     *
+     * There should be a local file info object that stores:
+     * - File handle
+     * - Linked list with segment info
+     * - Size of the largest s-record line
+     * - Data buffer for storing an s-record line
+     * - Data buffer for storing the segment data
+     */
   }
 
   /* Give the result back to the caller. */
@@ -132,6 +225,9 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 static void SRecReaderFileClose(void)
 {
   /* TODO ##Vg Implement SRecReaderFileClose. */
+
+  /* Close the file. */
+  (void)f_close(&srecHandle.file);
 } /*** end of SRecReaderFileClose ***/
 
 

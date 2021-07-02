@@ -37,6 +37,7 @@
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
 #include <ff.h>                             /* FatFS                                   */
+#include <ctype.h>                          /* for toupper() etc.                      */
 #include <string.h>                         /* C library string handling               */
 #include "firmware.h"                       /* Firmware reader module                  */
 #include "srecreader.h"                     /* S-record firmware file reader           */
@@ -53,6 +54,17 @@
 
 
 /****************************************************************************************
+* Configuration check
+****************************************************************************************/
+/* The current implementation assumes that char's are 1 byte in size. Verify that FatFS
+ * is configured accordingly.
+ */
+#if (_LFN_UNICODE > 0)     /* Unicode (UTF-16) string */
+#error "Unicode (UTF-16) mode currently not supported (_LFN_UNICODE must be 0)"
+#endif
+
+
+/****************************************************************************************
 * Type definitions
 ****************************************************************************************/
 /** \brief Structure that represents the handle to the S-record file, which groups all
@@ -63,12 +75,27 @@ typedef struct
   /** \brief FatFS file object handle. */
   FIL      file;
   /** \brief Byte buffer for storing a line from the S-record file. */
-  TCHAR    lineBuf[SREC_LINE_BUFFER_SIZE];
-  /** \brief Byte buffer for storing data extracted from an S-record. */
+  char     lineBuf[SREC_LINE_BUFFER_SIZE];
+  /** \brief Byte buffer for storing the data from an S-record with the help of function
+   *         SRecReaderParseLine().
+   */
+  uint8_t  lineDataBuf[SREC_LINE_BUFFER_SIZE/2];
+  /** \brief Byte buffer for storing data extracted from an S-record with the help of
+   *         function SRecReaderSegmentGetNextData().
+   */
   uint8_t  dataBuf[SREC_DATA_BUFFER_SIZE];
   /** \brief Maximum number of firmware data bytes on the longest S-record line. */
   uint16_t maxLineData;
 } tSRecHandle;
+
+/** \brief Enumeration for the different S-record line types. */
+typedef enum
+{
+  LINE_TYPE_S1,                                  /**< 16-bit address line              */
+  LINE_TYPE_S2,                                  /**< 24-bit address line              */
+  LINE_TYPE_S3,                                  /**< 32-bit address line              */
+  LINE_TYPE_UNSUPPORTED                          /**< unsupported line                 */
+} tSRecLineType;
 
 
 /****************************************************************************************
@@ -82,6 +109,11 @@ static uint8_t         SRecReaderSegmentGetCount(void);
 static uint32_t        SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address);
 static void            SRecReaderSegmentOpen(uint8_t idx);
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
+static uint8_t         SRecReaderParseLine(char const * line, uint32_t * address,
+                                           uint8_t * len, uint32_t * data);
+static tSRecLineType   SRecReaderGetLineType(char const * line);
+static uint8_t         SRecReaderVerifyChecksum(char const * line);
+static uint8_t         SRecReaderHexStringToByte(char const * hexstring);
 
 
 /****************************************************************************************
@@ -191,6 +223,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
          * linked list. Probably also need to keep track of the file pointer before
          * reading the line, to be able to track the file pointer at the start of a
          * segment.
+         * Note that SRecReaderParseLine() still needs to be implemented.
+         * ============ CONTINUE HERE =============
          */
       }
     }
@@ -331,6 +365,211 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   /* Give the result back to the caller. */
   return result;
 } /*** end of SRecReaderSegmentGetNextData ***/
+
+
+/************************************************************************************//**
+** \brief     Looks for S1, S2 or S3 S-record lines and parses them by extracting the
+**            address, length and data.
+** \param     line    An S-record line.
+** \param     address Base memory address extracted from the S-record data line.
+** \param     len     Number of data bytes extracted from the S-record data line.
+** \param     data    Byte array where the data bytes from the S-Record data line
+**                    are stored.
+** \return    TBX_OK if the S-record contained an S1, S2 or S3 line and the data was
+**            successfully extracted. TBX_ERROR if an error was detected during the
+**            line parsing. For example when the line contains in invalid checksum.
+**            Note that if the line was not and S1, S2 or S3 line with data, then
+**            TBX_OK is still returned, but len will be set to 0 because no data was
+**            present and consequently extracted.
+**
+****************************************************************************************/
+static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
+                                   uint8_t * len, uint32_t * data)
+{
+  uint8_t result = TBX_ERROR;
+
+  /* Verify parameters. */
+  TBX_ASSERT((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL));
+
+  /* Only continue with valid parameters. */
+  if ((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL))
+  {
+    /* TODO ##Vg Implement SRecReaderParseLine(). */
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of SRecReaderParseLine ***/
+
+
+/************************************************************************************//**
+** \brief     Inspects an S-record line to determine its type. Only S1, S2, and S3
+**            lines are interesting, so those are the only ones we look for.
+** \param     line A line from the S-Record.
+** \return    S-record line type.
+**
+****************************************************************************************/
+static tSRecLineType SRecReaderGetLineType(char const * line)
+{
+  tSRecLineType result = LINE_TYPE_UNSUPPORTED;
+
+  /* Verify parameter. */
+  TBX_ASSERT(line != NULL);
+
+  /* Only continue with valid parameter. */
+  if (line != NULL)
+  {
+    /* Only continue if the line starts with an 's' or and 'S' character. */
+    if ( (line[0] == 's') || (line[0] == 'S') )
+    {
+      /* Filter out the supported line types, so S1, S2 or S3. */
+      switch (line[1])
+      {
+        case '1':
+          result = LINE_TYPE_S1;
+          break;
+        case '2':
+          result = LINE_TYPE_S2;
+          break;
+        case '3':
+          result = LINE_TYPE_S3;
+          break;
+        default:
+          result = LINE_TYPE_UNSUPPORTED;
+          break;
+      }
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of SRecReaderGetLineType ***/
+
+
+/************************************************************************************//**
+** \brief     Inspects an S1, S2 or S3 line from a Motorola S-Record file to
+**            determine if the checksum at the end is corrrect.
+** \param     line An S1, S2 or S3 line from the S-Record.
+** \return    TBX_OK if the checksum is correct, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t SRecReaderVerifyChecksum(char const * line)
+{
+  uint8_t result = TBX_ERROR;
+  uint8_t bytesOnLine;
+  uint8_t checksum;
+  uint8_t charIdx;
+
+  /* Verify parameter. */
+  TBX_ASSERT(line != NULL);
+
+  /* Only continue with valid parameter. */
+  if (line != NULL)
+  {
+    /* Adjust index to point to byte count value. */
+    charIdx = 2U;
+    /* Read out the number of byte values that follow on the line. */
+    bytesOnLine = SRecReaderHexStringToByte(&line[charIdx]);
+    /* Checksum starts with the byte count. */
+    checksum = bytesOnLine;
+    /* Adjust index to the first byte of the address. */
+    charIdx += 2U;
+    /* Add byte values of address and data, but not the final checksum. */
+    do
+    {
+      /* Add the next byte value to the checksum. */
+      checksum += SRecReaderHexStringToByte(&line[charIdx]);
+      /* Update counter. */
+      bytesOnLine--;
+      /* Point to next hex string in the line. */
+      charIdx += 2U;
+    }
+    while (bytesOnLine > 1U);
+    /* The checksum is calculated by summing up the values of the byte count, address and
+     * databytes and then taking the 1-complement of the sum's least significant byte.
+     */
+    checksum = ~checksum;
+
+    /* Finally verify the calculated checksum with the one at the end of the line. */
+    if (checksum == SRecReaderHexStringToByte(&line[charIdx]))
+    {
+      /* Checksum correct so update the result. */
+      result = TBX_OK;
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of SRecReaderVerifyChecksum ***/
+
+
+/************************************************************************************//**
+** \brief     Helper function to convert a sequence of 2 characters that represent
+**            a hexadecimal value to the actual byte value.
+**              Example: SRecReaderHexStringToByte("2f")  --> returns 47.
+** \param     hexstring String beginning with 2 characters that represent a hexa-
+**            decimal value.
+** \return    The resulting byte value.
+**
+****************************************************************************************/
+static uint8_t SRecReaderHexStringToByte(char const * hexstring)
+{
+  uint8_t result = 0U;
+  /* Conversion table to convert a hexadecimal ASCII character to its 4-bit value. Note
+   * that there are more efficient ways of doing this conversion, for example by
+   * deducting '0' from the character value. However, MISRA does not allow typecasting
+   * a character into an integer type. Note that this constant table was made static
+   * to lower the stack load.
+   */
+  static const struct
+  {
+    char    c;
+    uint8_t b;
+  } hexConvTbl[] =
+  {
+    { '0', 0  }, { '1', 1  },  { '2', 2  },  { '3', 3  },
+    { '4', 4  }, { '5', 5  },  { '6', 6  },  { '7', 7  },
+    { '8', 8  }, { '9', 9  },  { 'a', 10 },  { 'A', 10 },
+    { 'b', 11 }, { 'B', 11 },  { 'c', 12 },  { 'C', 12 },
+    { 'd', 13 }, { 'D', 13 },  { 'e', 14 },  { 'E', 14 },
+    { 'f', 15 }, { 'F', 15 }
+  };
+  uint8_t loopCnt;
+  uint8_t tblIdx;
+  uint8_t nibbles[2];
+
+  /* Verify parameter. */
+  TBX_ASSERT(hexstring != NULL);
+
+  /* Only continue with valid parameter. */
+  if (hexstring != NULL)
+  {
+    /* Loop through both hexadecimal characters to convert them to their respective
+     * 4-bit value.
+     */
+    for (loopCnt = 0U; loopCnt < (sizeof(nibbles)/sizeof(nibbles[0])); loopCnt++)
+    {
+      /* Convert the hexadecimal ASCII character to its 4-bit value. */
+      nibbles[loopCnt] = 0;
+      for (tblIdx = 0U; tblIdx < (sizeof(hexConvTbl)/sizeof(hexConvTbl[0])); tblIdx++)
+      {
+        /* Is this the hexadecimal ASCII character to convert. */
+        if (hexConvTbl[tblIdx].c == hexstring[loopCnt])
+        {
+          /* Store its 4-bit value in the nibbles array. */
+          nibbles[loopCnt] = hexConvTbl[tblIdx].b;
+          /* Done converting this hexadecimal ASCII character. */
+          break;
+        }
+      }
+    }
+    /* Construct the actual resulting byte value from the nibbles. */
+    result = (uint8_t)(nibbles[0] << 4) + nibbles[1];
+  }
+
+  /* Give the resuts back to the caller. */
+  return result;
+} /*** end of SRecReaderHexStringToByte ***/
 
 
 /*********************************** end of srecreader.c *******************************/

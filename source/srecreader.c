@@ -110,7 +110,7 @@ static uint32_t        SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
 static void            SRecReaderSegmentOpen(uint8_t idx);
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
 static uint8_t         SRecReaderParseLine(char const * line, uint32_t * address,
-                                           uint8_t * len, uint32_t * data);
+                                           uint8_t * len, uint8_t * data);
 static tSRecLineType   SRecReaderGetLineType(char const * line);
 static uint8_t         SRecReaderVerifyChecksum(char const * line);
 static uint8_t         SRecReaderHexStringToByte(char const * hexstring);
@@ -181,7 +181,11 @@ static void SRecReaderTerminate(void)
 ****************************************************************************************/
 static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 {
-  uint8_t result = TBX_OK;
+  uint8_t  result = TBX_OK;
+  uint32_t lineAddress = 0U;
+  uint8_t  lineDataLen = 0U;
+  uint8_t  parseResult;
+  uint8_t  stopLineLoop = TBX_FALSE;
 
   /* Verify parameter. */
   TBX_ASSERT(firmwareFile != NULL);
@@ -202,7 +206,7 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
       /* Reset max line data counter. */
       srecHandle.maxLineData = 0U;
       /* Loop to read all the lines in the file one at a time. */
-      for (;;)
+      while (stopLineLoop != TBX_TRUE)
       {
         /* Attempt to read the next line from the file */
         if (f_gets(srecHandle.lineBuf, SREC_LINE_BUFFER_SIZE, &srecHandle.file) == NULL)
@@ -215,17 +219,34 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
             result = TBX_ERROR;
           }
           /* Stop looping when an error occurred or we reached the end of the file. */
-          break;
+          stopLineLoop = TBX_TRUE;
+          continue;
         }
-        /* TODO ##Vg Continue here by processing the line. Need to keep the TCHAR stuff
-         * in mind though for unicode stuff. As a next step I need to extract the
-         * address and data length from the line. And I need to implement the segment
-         * linked list. Probably also need to keep track of the file pointer before
-         * reading the line, to be able to track the file pointer at the start of a
-         * segment.
-         * Note that SRecReaderParseLine() still needs to be implemented.
-         * ============ CONTINUE HERE =============
+        /* Attempt to extract data from the s-record line. */
+        parseResult = SRecReaderParseLine(srecHandle.lineBuf, &lineAddress, &lineDataLen,
+                                          srecHandle.lineDataBuf);
+        /* Did an error occur during line parsing? */
+        if (parseResult != TBX_OK)
+        {
+          /* Close the file, update the result to flag this problem and stop looping. */
+          (void)f_close(&srecHandle.file);
+          result = TBX_ERROR;
+          stopLineLoop = TBX_TRUE;
+          continue;
+        }
+        /* Still here so parsing was okay, but only continue if data was actually
+         * extracted. On the case of a non S1, S2 or S3 line the parsing can still be
+         * successful, but did not yield any extracted data bytes.
          */
+        if (lineDataLen > 0U)
+        {
+          /* TODO ##Vg Continue here by processing the extracted data and adress. And I
+           * need to implement the segment linked list. Probably also need to keep track
+           * of the file pointer before reading the line, to be able to track the file
+           * pointer at the start of a segment.
+           * =============== CONTINUE HERE ================
+           */
+        }
       }
     }
 
@@ -384,9 +405,13 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
 **
 ****************************************************************************************/
 static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
-                                   uint8_t * len, uint32_t * data)
+                                   uint8_t * len, uint8_t * data)
 {
-  uint8_t result = TBX_ERROR;
+  uint8_t       result = TBX_ERROR;
+  tSRecLineType lineType;
+  uint8_t       charIdx = 2U; /* Point to the byte count value. */
+  uint8_t       dataByteIdx;
+  uint8_t       bytesOnLine;
 
   /* Verify parameters. */
   TBX_ASSERT((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL));
@@ -394,7 +419,135 @@ static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
   /* Only continue with valid parameters. */
   if ((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL))
   {
-    /* TODO ##Vg Implement SRecReaderParseLine(). */
+    /* All okay so far. Update the result accordingly and from now on only set an error
+     * value upon detection of a problem.
+     */
+    result = TBX_OK;
+    /* Determine the s-record line type. */
+    lineType = SRecReaderGetLineType(line);
+    /* Verify the checksum on the line. Note that this is only needed for S1, S2 and S3
+     * line types, because those are the only ones this function will extract data from.
+     */
+    if (lineType != LINE_TYPE_UNSUPPORTED)
+    {
+      if (SRecReaderVerifyChecksum(line) != TBX_OK)
+      {
+        /* Flag error due to incorrect checksum on the s-record line. */
+        result = TBX_ERROR;
+      }
+    }
+
+    /* Only continue with a valid checksum on the S1, S2 or S3 line. */
+    if (result == TBX_OK)
+    {
+      /* The S1, S2 and S3 lines differ in the amount of bytes for the memory address.
+       * Therefore, filter on the line type to correctly extract the memory address.
+       */
+      switch (lineType)
+      {
+        case LINE_TYPE_S1:
+          /* Read out the number of bytes that follow on the line. */
+          bytesOnLine = SRecReaderHexStringToByte(&line[charIdx]);
+          /* Set the character index to point to the start of the memory address. */
+          charIdx += 2U;
+          /* Extract the 16-bit memory address. */
+          *address = (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 8U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += SRecReaderHexStringToByte(&line[charIdx]);
+          /* The number of bytes on the line must be > 3 (2 for address + 1 for cs. */
+          if (bytesOnLine > 3U)
+          {
+            /* Set the data byte length, so the number of data bytes to extract. */
+            *len = bytesOnLine - 3U;
+          }
+          else
+          {
+            /* Invalid byte count detected on the line. Flag error. */
+            result = TBX_ERROR;
+          }
+          break;
+        case LINE_TYPE_S2:
+          /* Read out the number of bytes that follow on the line. */
+          bytesOnLine = SRecReaderHexStringToByte(&line[charIdx]);
+          /* Set the character index to point to the start of the memory address. */
+          charIdx += 2U;
+          /* Extract the 24-bit memory address. */
+          *address = (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 16U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 8U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += SRecReaderHexStringToByte(&line[charIdx]);
+          /* The number of bytes on the line must be > 4 (3 for address + 1 for cs. */
+          if (bytesOnLine > 4U)
+          {
+            /* Set the data byte length, so the number of data bytes to extract. */
+            *len = bytesOnLine - 4U;
+          }
+          else
+          {
+            /* Invalid byte count detected on the line. Flag error. */
+            result = TBX_ERROR;
+          }
+          break;
+        case LINE_TYPE_S3:
+          /* Read out the number of bytes that follow on the line. */
+          bytesOnLine = SRecReaderHexStringToByte(&line[charIdx]);
+          /* Set the character index to point to the start of the memory address. */
+          charIdx += 2U;
+          /* Extract the 32-bit memory address. */
+          *address = (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 24U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 16U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += (uint32_t)SRecReaderHexStringToByte(&line[charIdx]) << 8U;
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          *address += SRecReaderHexStringToByte(&line[charIdx]);
+          /* The number of bytes on the line must be > 5 (4 for address + 1 for cs. */
+          if (bytesOnLine > 5U)
+          {
+            /* Set the data byte length, so the number of data bytes to extract. */
+            *len = bytesOnLine - 5U;
+          }
+          else
+          {
+            /* Invalid byte count detected on the line. Flag error. */
+            result = TBX_ERROR;
+          }
+          break;
+        case LINE_TYPE_UNSUPPORTED:
+        default:
+          /* Not a line type with data to extract. This is not an error, but there is
+           * just no data to extract. Therefore set the data length to 0 so that the
+           * caller knows there was no data to extract.
+           */
+          *len = 0U;
+          break;
+      }
+    }
+
+    /* Only continue if all is okay so far. This means a properly extracted memory
+     * address in the case of an S1, S2 or S3 line, or a valid unsupported line type in
+     * which case the length is set to 0.
+     */
+    if (result == TBX_OK)
+    {
+      /* Extract and copy the data bytes. Note that in the case of LINE_TYPE_UNSUPPORTED,
+       * len is set to 0, so nothing is actually copied.
+       */
+      for (dataByteIdx = 0U; dataByteIdx < *len; dataByteIdx++)
+      {
+        /* Move character index two characters forward to the next byte. */
+        charIdx += 2U;
+        /* Extract the byte value and store it in the data buffer. */
+        data[dataByteIdx] = SRecReaderHexStringToByte(&line[charIdx]);
+      }
+    }
   }
 
   /* Give the result back to the caller. */

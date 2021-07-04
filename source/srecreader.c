@@ -37,8 +37,6 @@
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX toolbox                        */
 #include <ff.h>                             /* FatFS                                   */
-#include <ctype.h>                          /* for toupper() etc.                      */
-#include <string.h>                         /* C library string handling               */
 #include "firmware.h"                       /* Firmware reader module                  */
 #include "srecreader.h"                     /* S-record firmware file reader           */
 
@@ -72,6 +70,8 @@
  */
 typedef struct
 {
+  /** \brief Boolean flag to keep track if a file is opened or not. */
+  uint8_t  fileOpened;
   /** \brief FatFS file object handle. */
   FIL      file;
   /** \brief Byte buffer for storing a line from the S-record file. */
@@ -155,10 +155,8 @@ tFirmwareReader const * SRecReaderGet(void)
 ****************************************************************************************/
 static void SRecReaderInit(void)
 {
-  /* Initialize the file handle to its reset value. */
-  memset(&srecHandle, 0, sizeof(srecHandle));
-
-  /* TODO ##Vg Implement SRecReaderInit. */
+  /* Initialize the s-record handle members. */
+  srecHandle.fileOpened = TBX_FALSE;
 } /*** end of SRecReaderInit ***/
 
 
@@ -168,7 +166,8 @@ static void SRecReaderInit(void)
 ****************************************************************************************/
 static void SRecReaderTerminate(void)
 {
-  /* TODO ##Vg Implement SRecReaderTerminate. */
+  /* Make sure a possibly previously opened file is closed. */
+  SRecReaderFileClose();
 } /*** end of SRecReaderTerminate ***/
 
 
@@ -193,6 +192,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
   /* Only continue with valid parameter. */
   if (firmwareFile != NULL)
   {
+    /* Make sure a possibly previously opened file is first closed. */
+    SRecReaderFileClose();
     /* Open the file for reading. */
     if (f_open(&srecHandle.file, firmwareFile, FA_READ) != FR_OK)
     {
@@ -203,6 +204,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
     /* Only continue if the file was successfully opened. */
     if (result == TBX_OK)
     {
+      /* Update the flag that tracks the file opened state. */
+      srecHandle.fileOpened = TBX_TRUE;
       /* Reset max line data counter. */
       srecHandle.maxLineData = 0U;
       /* Loop to read all the lines in the file one at a time. */
@@ -214,6 +217,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
           /* An error occured or we reached the end of the file. Was it an error? */
           if (f_error(&srecHandle.file) > 0U)
           {
+            /* Update the flag that tracks the file opened state. */
+            srecHandle.fileOpened = TBX_TRUE;
             /* Close the file and update the result to flag this problem. */
             (void)f_close(&srecHandle.file);
             result = TBX_ERROR;
@@ -228,6 +233,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
         /* Did an error occur during line parsing? */
         if (parseResult != TBX_OK)
         {
+          /* Update the flag that tracks the file opened state. */
+          srecHandle.fileOpened = TBX_TRUE;
           /* Close the file, update the result to flag this problem and stop looping. */
           (void)f_close(&srecHandle.file);
           result = TBX_ERROR;
@@ -240,6 +247,12 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
          */
         if (lineDataLen > 0U)
         {
+          /* Update the max line data counter. */
+          if (lineDataLen > srecHandle.maxLineData)
+          {
+            srecHandle.maxLineData = lineDataLen;
+          }
+
           /* TODO ##Vg Continue here by processing the extracted data and adress. And I
            * need to implement the segment linked list. Probably also need to keep track
            * of the file pointer before reading the line, to be able to track the file
@@ -279,10 +292,19 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 ****************************************************************************************/
 static void SRecReaderFileClose(void)
 {
-  /* TODO ##Vg Implement SRecReaderFileClose. */
 
-  /* Close the file. */
-  (void)f_close(&srecHandle.file);
+  /* Only close the file if one is actually opened. */
+  if (srecHandle.fileOpened == TBX_TRUE)
+  {
+    /* Reset the flag. */
+    srecHandle.fileOpened = TBX_FALSE;
+    /* Close the file. */
+    (void)f_close(&srecHandle.file);
+
+    /* TODO ##Vg Implement SRecReaderFileClose. Need to release the linked list with
+     * segment info.
+     */
+  }
 } /*** end of SRecReaderFileClose ***/
 
 
@@ -299,7 +321,11 @@ static uint8_t SRecReaderSegmentGetCount(void)
 {
   uint8_t result = 0U;
 
-  /* TODO ##Vg Implement SRecReaderSegmentGetCount. */
+  /* Only continue if a file is actually opened. */
+  if (srecHandle.fileOpened == TBX_TRUE)
+  {
+    /* TODO ##Vg Implement SRecReaderSegmentGetCount. */
+  }
 
   /* Give the result back to the caller. */
   return result;
@@ -327,8 +353,12 @@ static uint32_t SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
   /* Only continue with valid parameters. */
   if ((idx < SRecReaderSegmentGetCount()) && (address != NULL))
   {
-    /* TODO ##Vg Implement SRecReaderSegmentGetInfo. */
-    *address = 0U;
+    /* Only continue if a file is actually opened. */
+    if (srecHandle.fileOpened == TBX_TRUE)
+    {
+      /* TODO ##Vg Implement SRecReaderSegmentGetInfo. */
+      *address = 0U;
+    }
   }
 
   /* Give the result back to the caller. */
@@ -351,7 +381,11 @@ static void SRecReaderSegmentOpen(uint8_t idx)
   /* Only continue with valid parameter. */
   if (idx < SRecReaderSegmentGetCount())
   {
-    /* TODO ##Vg Implement SRecReaderSegmentOpen. */
+    /* Only continue if a file is actually opened. */
+    if (srecHandle.fileOpened == TBX_TRUE)
+    {
+      /* TODO ##Vg Implement SRecReaderSegmentOpen. */
+    }
   }
 } /*** end of SRecReaderSegmentOpen ***/
 
@@ -378,9 +412,13 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   /* Only continue with valid parameters. */
   if ((address != NULL) && (len != NULL))
   {
-    /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
-    *address = 0;
-    *len = 0;
+    /* Only continue if a file is actually opened. */
+    if (srecHandle.fileOpened == TBX_TRUE)
+    {
+      /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
+      *address = 0;
+      *len = 0;
+    }
   }
 
   /* Give the result back to the caller. */
@@ -402,6 +440,8 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
 **            Note that if the line was not and S1, S2 or S3 line with data, then
 **            TBX_OK is still returned, but len will be set to 0 because no data was
 **            present and consequently extracted.
+** \attention If a NULL pointer is passed for the data parameter, the actual data
+**            extraction and storage in the data byte array is skipped.
 **
 ****************************************************************************************/
 static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
@@ -413,11 +453,11 @@ static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
   uint8_t       dataByteIdx;
   uint8_t       bytesOnLine;
 
-  /* Verify parameters. */
-  TBX_ASSERT((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL));
+  /* Verify parameters. Note that a NULL pointer for data is allowed. */
+  TBX_ASSERT((line != NULL) && (address != NULL) && (len != NULL));
 
   /* Only continue with valid parameters. */
-  if ((line != NULL) && (address != NULL) && (len != NULL) && (data != NULL))
+  if ((line != NULL) && (address != NULL) && (len != NULL))
   {
     /* All okay so far. Update the result accordingly and from now on only set an error
      * value upon detection of a problem.
@@ -537,15 +577,19 @@ static uint8_t SRecReaderParseLine(char const * line, uint32_t * address,
      */
     if (result == TBX_OK)
     {
-      /* Extract and copy the data bytes. Note that in the case of LINE_TYPE_UNSUPPORTED,
-       * len is set to 0, so nothing is actually copied.
-       */
-      for (dataByteIdx = 0U; dataByteIdx < *len; dataByteIdx++)
+      /* Skip the data extraction and copying if a NULL pointer was passed for data. */
+      if (data != NULL)
       {
-        /* Move character index two characters forward to the next byte. */
-        charIdx += 2U;
-        /* Extract the byte value and store it in the data buffer. */
-        data[dataByteIdx] = SRecReaderHexStringToByte(&line[charIdx]);
+        /* Extract and copy the data bytes. Note that in the case of
+         * LINE_TYPE_UNSUPPORTED, len is set to 0, so nothing is actually copied.
+         */
+        for (dataByteIdx = 0U; dataByteIdx < *len; dataByteIdx++)
+        {
+          /* Move character index two characters forward to the next byte. */
+          charIdx += 2U;
+          /* Extract the byte value and store it in the data buffer. */
+          data[dataByteIdx] = SRecReaderHexStringToByte(&line[charIdx]);
+        }
       }
     }
   }

@@ -228,8 +228,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
           continue;
         }
         /* Attempt to extract data from the s-record line. */
-        parseResult = SRecReaderParseLine(srecHandle.lineBuf, &lineAddress, &lineDataLen,
-                                          srecHandle.lineDataBuf);
+        parseResult = SRecReaderParseLine(srecHandle.lineBuf, &lineAddress,
+                                          &lineDataLen, NULL);
         /* Did an error occur during line parsing? */
         if (parseResult != TBX_OK)
         {

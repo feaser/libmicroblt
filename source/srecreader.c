@@ -84,9 +84,20 @@ typedef struct
    *         function SRecReaderSegmentGetNextData().
    */
   uint8_t  dataBuf[SREC_DATA_BUFFER_SIZE];
-  /** \brief Maximum number of firmware data bytes on the longest S-record line. */
-  uint16_t maxLineData;
+  /** \brief Handle to the linked list with segments. */
+  tTbxList * segmentList;
 } tSRecHandle;
+
+/** \brief Structure that groups segment related info. */
+typedef struct
+{
+  /** \brief Base memory address of the segment's data. */
+  uint32_t addr;
+  /** \brief Total length of the segment in bytes. */
+  uint32_t len;
+  /** \brief File pointer inside the firmware file where this segment starts. */
+  FSIZE_t  fptr;
+} tSRecSegment;
 
 /** \brief Enumeration for the different S-record line types. */
 typedef enum
@@ -155,8 +166,15 @@ tFirmwareReader const * SRecReaderGet(void)
 ****************************************************************************************/
 static void SRecReaderInit(void)
 {
+  uint8_t memPoolStatus;
+
   /* Initialize the s-record handle members. */
   srecHandle.fileOpened = TBX_FALSE;
+  srecHandle.segmentList = NULL;
+  /* Create a memory pool for segment info, with an initial size of 1. */
+  memPoolStatus = TbxMemPoolCreate(1, sizeof(tSRecSegment));
+  /* Make sure the memory pool could be created. If not, increase TBX_CONF_HEAP_SIZE. */
+  TBX_ASSERT(memPoolStatus == TBX_OK);
 } /*** end of SRecReaderInit ***/
 
 
@@ -180,11 +198,13 @@ static void SRecReaderTerminate(void)
 ****************************************************************************************/
 static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 {
-  uint8_t  result = TBX_OK;
-  uint32_t lineAddress = 0U;
-  uint8_t  lineDataLen = 0U;
-  uint8_t  parseResult;
-  uint8_t  stopLineLoop = TBX_FALSE;
+  uint8_t        result = TBX_OK;
+  uint32_t       lineAddress = 0U;
+  uint8_t        lineDataLen = 0U;
+  uint8_t        parseResult;
+  uint8_t        stopLineLoop = TBX_FALSE;
+  FSIZE_t        lineFPtr;
+  tSRecSegment * segment;
 
   /* Verify parameter. */
   TBX_ASSERT(firmwareFile != NULL);
@@ -200,17 +220,39 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
       /* Could not open the file. Update the result to flag this problem. */
       result = TBX_ERROR;
     }
+    /* File successfully opened. */
+    else
+    {
+      /* Update the flag that tracks the file opened state. */
+      srecHandle.fileOpened = TBX_TRUE;
+    }
 
     /* Only continue if the file was successfully opened. */
     if (result == TBX_OK)
     {
-      /* Update the flag that tracks the file opened state. */
-      srecHandle.fileOpened = TBX_TRUE;
-      /* Reset max line data counter. */
-      srecHandle.maxLineData = 0U;
+      /* Create the linked list with segment information. */
+      srecHandle.segmentList = TbxListCreate();
+      /* Verify that the linked list could be created. */
+      if (srecHandle.segmentList == NULL)
+      {
+        /* Update the flag that tracks the file opened state. */
+        srecHandle.fileOpened = TBX_FALSE;
+        /* Close the file and update the result to flag this problem. */
+        (void)f_close(&srecHandle.file);
+        result = TBX_ERROR;
+      }
+    }
+
+    /* Only continue if the linked list was successfully created. */
+    if (result == TBX_OK)
+    {
       /* Loop to read all the lines in the file one at a time. */
       while (stopLineLoop != TBX_TRUE)
       {
+        /* Store the file pointer of the current line. Needed later on in case this
+         * is a new segment.
+         */
+        lineFPtr = f_tell(&srecHandle.file);
         /* Attempt to read the next line from the file */
         if (f_gets(srecHandle.lineBuf, SREC_LINE_BUFFER_SIZE, &srecHandle.file) == NULL)
         {
@@ -218,7 +260,9 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
           if (f_error(&srecHandle.file) > 0U)
           {
             /* Update the flag that tracks the file opened state. */
-            srecHandle.fileOpened = TBX_TRUE;
+            srecHandle.fileOpened = TBX_FALSE;
+            /* Delete the linked list that was created earlier. */
+            TbxListDelete(srecHandle.segmentList);
             /* Close the file and update the result to flag this problem. */
             (void)f_close(&srecHandle.file);
             result = TBX_ERROR;
@@ -234,7 +278,9 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
         if (parseResult != TBX_OK)
         {
           /* Update the flag that tracks the file opened state. */
-          srecHandle.fileOpened = TBX_TRUE;
+          srecHandle.fileOpened = TBX_FALSE;
+          /* Delete the linked list that was created earlier. */
+          TbxListDelete(srecHandle.segmentList);
           /* Close the file, update the result to flag this problem and stop looping. */
           (void)f_close(&srecHandle.file);
           result = TBX_ERROR;
@@ -247,18 +293,30 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
          */
         if (lineDataLen > 0U)
         {
-          /* Update the max line data counter. */
-          if (lineDataLen > srecHandle.maxLineData)
-          {
-            srecHandle.maxLineData = lineDataLen;
-          }
-
           /* TODO ##Vg Continue here by processing the extracted data and adress. And I
            * need to implement the segment linked list. Probably also need to keep track
            * of the file pointer before reading the line, to be able to track the file
            * pointer at the start of a segment.
+           * -> Linked list and memory pool for segments created.
+           * -> lineFPtr holds file pointer of where the current line starts in the file.
            * =============== CONTINUE HERE ================
            */
+          /* Iterate over the linked list. */
+          segment = TbxListGetFirstItem(srecHandle.segmentList);
+          while (segment != NULL)
+          {
+            /* TODO ##Vg Does the parsed firmware data fit at the start or end of this
+             * segment?
+             */
+
+            /* Continue with the next segment. */
+            segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+          }
+          /* TODO ##Vg Create a new segment if the parsed firmware data does not fit
+           * at the start of end of any existing segments.
+           */
+
+
         }
       }
     }
@@ -292,6 +350,7 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 ****************************************************************************************/
 static void SRecReaderFileClose(void)
 {
+  tSRecSegment * segment;
 
   /* Only close the file if one is actually opened. */
   if (srecHandle.fileOpened == TBX_TRUE)
@@ -300,10 +359,18 @@ static void SRecReaderFileClose(void)
     srecHandle.fileOpened = TBX_FALSE;
     /* Close the file. */
     (void)f_close(&srecHandle.file);
-
-    /* TODO ##Vg Implement SRecReaderFileClose. Need to release the linked list with
-     * segment info.
-     */
+    /* Iterate over the linked list contents. */
+    segment = TbxListGetFirstItem(srecHandle.segmentList);
+    while (segment != NULL)
+    {
+      /* Give the allocated memory for the segment back to the memory pool. */
+      TbxMemPoolRelease(segment);
+      /* Continue with the next segment. */
+      segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+    }
+    /* Delete the linked list with segments. */
+    TbxListDelete(srecHandle.segmentList);
+    srecHandle.segmentList = NULL;
   }
 } /*** end of SRecReaderFileClose ***/
 
@@ -418,6 +485,9 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
       /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
       *address = 0;
       *len = 0;
+      /* TODO ##Vg Backup file pointer before reading a line from the file. If it no
+       * longer fits in the data buffer, then the file pointer can be rewinded.
+       */
     }
   }
 

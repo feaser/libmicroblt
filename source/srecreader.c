@@ -71,19 +71,19 @@
 typedef struct
 {
   /** \brief Boolean flag to keep track if a file is opened or not. */
-  uint8_t  fileOpened;
+  uint8_t    fileOpened;
   /** \brief FatFS file object handle. */
-  FIL      file;
+  FIL        file;
   /** \brief Byte buffer for storing a line from the S-record file. */
-  char     lineBuf[SREC_LINE_BUFFER_SIZE];
+  char       lineBuf[SREC_LINE_BUFFER_SIZE];
   /** \brief Byte buffer for storing the data from an S-record with the help of function
    *         SRecReaderParseLine().
    */
-  uint8_t  lineDataBuf[SREC_LINE_BUFFER_SIZE/2];
+  uint8_t    lineDataBuf[SREC_LINE_BUFFER_SIZE/2];
   /** \brief Byte buffer for storing data extracted from an S-record with the help of
    *         function SRecReaderSegmentGetNextData().
    */
-  uint8_t  dataBuf[SREC_DATA_BUFFER_SIZE];
+  uint8_t    dataBuf[SREC_DATA_BUFFER_SIZE];
   /** \brief Handle to the linked list with segments. */
   tTbxList * segmentList;
 } tSRecHandle;
@@ -563,7 +563,15 @@ static void SRecReaderSegmentOpen(uint8_t idx)
 ****************************************************************************************/
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len)
 {
-  uint8_t const * result = NULL;
+  uint8_t  const * result = NULL;
+  uint8_t          dataReadDone = TBX_FALSE;
+  uint8_t          parseResult;
+  uint32_t         lineAddress;
+  uint8_t          lineDataLen;
+  FSIZE_t          lineFPtr;
+  uint8_t          byteIdx;
+
+  /* TODO ##Vg Still need to test this function. */
 
   /* Verify parameters. */
   TBX_ASSERT((address != NULL) && (len != NULL));
@@ -574,12 +582,105 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
     /* Only continue if a file is actually opened and segments were extracted. */
     if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
     {
-      /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
-      *address = 0;
-      *len = 0;
-      /* TODO ##Vg Backup file pointer before reading a line from the file. If it no
-       * longer fits in the data buffer, then the file pointer can be rewinded.
+      /* Set the result to the valid databuffer, which indicates success. From now on
+       * only set it to NULL, in case an error was detected.
        */
+      result = srecHandle.dataBuf;
+
+      /* Initialize the lenght output parameter, since we plan on using it as a data
+       * buffer indexer as well.
+       */
+      *len = 0U;
+
+      /* Loop to read as much data from this segment that will with in the internal
+       * data buffer.
+       */
+      while (dataReadDone != TBX_TRUE)
+      {
+        /* Store the file pointer of the current line. Might need it later to rewind. */
+        lineFPtr = f_tell(&srecHandle.file);
+        /* Attempt to read the next line from the file. */
+        if (f_gets(srecHandle.lineBuf, SREC_LINE_BUFFER_SIZE, &srecHandle.file) == NULL)
+        {
+          /* An error occured or we reached the end of the file. Was it an error? */
+          if (f_error(&srecHandle.file) > 0U)
+          {
+            /* Flag the error by updating the result and resetting the length. */
+            *len = 0;
+            result = NULL;
+            /* Rewind the file pointer as well. */
+            (void)f_lseek(&srecHandle.file, lineFPtr);
+          }
+          /* Stop looping when an error occurred or we reached the end of the file. */
+          dataReadDone = TBX_TRUE;
+          continue;
+        }
+
+        /* Still here, so a line was read fron the file. Attempt to extract data from
+         * the S-record line.
+         */
+        parseResult = SRecReaderParseLine(srecHandle.lineBuf, &lineAddress,
+                                          &lineDataLen, srecHandle.lineDataBuf);
+        /* Did an error occur during line parsing? */
+        if (parseResult != TBX_OK)
+        {
+          /* Flag the error by updating the result and resetting the length. */
+          *len = 0;
+          result = NULL;
+          /* Rewind the file pointer as well. */
+          (void)f_lseek(&srecHandle.file, lineFPtr);
+          dataReadDone = TBX_TRUE;
+          continue;
+        }
+
+        /* Still here so parsing was okay, but only continue if data was actually
+         * extracted. In the case of a non S1, S2 or S3 line the parsing can still be
+         * successful, but did not yield any extracted data bytes.
+         */
+        if (lineDataLen > 0U)
+        {
+          /* Was this the first chunk of data? */
+          if (*len == 0U)
+          {
+            /* Set the base address of the data. */
+            *address = lineAddress;
+          }
+          /* Does this newly read data still belong to the same segment? In case it does,
+           * the data should fit right after the previously read data.
+           */
+          if (lineAddress != (*address + *len))
+          {
+            /* The data read from this line belongs to the a different segment. This
+             * means we are done and should not copy the data.
+             */
+            dataReadDone = TBX_TRUE;
+            continue;
+          }
+          /* Still here so the newly read data does belong to the same segment, but we
+           * can only copy it, if there is still space in the data buffer.
+           */
+          if ((*len + lineDataLen) > (uint16_t)SREC_DATA_BUFFER_SIZE)
+          {
+            /* Data won´t fit in the data buffer. This means we are done, but need to
+             * make sure to rewind the file pointer for the next time this function is
+             * called.
+             */
+            (void)f_lseek(&srecHandle.file, lineFPtr);
+            dataReadDone = TBX_TRUE;
+            continue;
+          }
+          /* Still here so we know that the data belongs to the same segment and that
+           * is will also still fit in the data buffer. Time to copy the data to the
+           * data buffer.
+           */
+          for (byteIdx = 0U; byteIdx < lineDataLen; byteIdx++)
+          {
+            srecHandle.dataBuf[*len + byteIdx] = srecHandle.lineDataBuf[byteIdx];
+          }
+          /* Update the data length. */
+          *len += lineDataLen;
+        }
+      }
     }
   }
 

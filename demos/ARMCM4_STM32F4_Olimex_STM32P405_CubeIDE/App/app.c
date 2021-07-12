@@ -110,7 +110,11 @@ void AppInit(void)
 static void AppTask(void * pvParameters)
 {
   /* File system object. This is the work area for the logical drive. */
-  FATFS fileSystem = { 0 };
+  FATFS    fileSystem = { 0 };
+  uint8_t  segmentIdx;
+  uint32_t segmentLen;
+  uint32_t segmentAddr;
+  uint32_t totalLen;
 
   TBX_UNUSED_ARG(pvParameters);
 
@@ -121,6 +125,11 @@ static void AppTask(void * pvParameters)
 
   /* TODO ##Vg Temporarily added for testing, before button press implementation. */
   (void)BltFirmwareFileOpen("demoprog.srec");
+  totalLen = BltFirmwareGetTotalSize();
+  for (segmentIdx = 0U; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
+  {
+    segmentLen = BltFirmwareSegmentGetInfo(segmentIdx, &segmentAddr);
+  }
   BltFirmwareFileClose();
 
   /* Enter infinite task loop. */

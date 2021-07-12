@@ -120,6 +120,7 @@ static uint8_t         SRecReaderSegmentGetCount(void);
 static uint32_t        SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address);
 static void            SRecReaderSegmentOpen(uint8_t idx);
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len);
+static uint8_t         SRecReaderCompareSegments(void const * item1, void const * item2);
 static uint8_t         SRecReaderParseLine(char const * line, uint32_t * address,
                                            uint8_t * len, uint8_t * data);
 static tSRecLineType   SRecReaderGetLineType(char const * line);
@@ -204,7 +205,7 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
   uint8_t        parseResult;
   uint8_t        stopLineLoop = TBX_FALSE;
   FSIZE_t        lineFPtr;
-  tSRecSegment * segment;
+  tSRecSegment * segment = NULL;
 
   /* Verify parameter. */
   TBX_ASSERT(firmwareFile != NULL);
@@ -259,12 +260,6 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
           /* An error occured or we reached the end of the file. Was it an error? */
           if (f_error(&srecHandle.file) > 0U)
           {
-            /* Update the flag that tracks the file opened state. */
-            srecHandle.fileOpened = TBX_FALSE;
-            /* Delete the linked list that was created earlier. */
-            TbxListDelete(srecHandle.segmentList);
-            /* Close the file and update the result to flag this problem. */
-            (void)f_close(&srecHandle.file);
             result = TBX_ERROR;
           }
           /* Stop looping when an error occurred or we reached the end of the file. */
@@ -277,66 +272,116 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
         /* Did an error occur during line parsing? */
         if (parseResult != TBX_OK)
         {
-          /* Update the flag that tracks the file opened state. */
-          srecHandle.fileOpened = TBX_FALSE;
-          /* Delete the linked list that was created earlier. */
-          TbxListDelete(srecHandle.segmentList);
-          /* Close the file, update the result to flag this problem and stop looping. */
-          (void)f_close(&srecHandle.file);
           result = TBX_ERROR;
           stopLineLoop = TBX_TRUE;
           continue;
         }
         /* Still here so parsing was okay, but only continue if data was actually
-         * extracted. On the case of a non S1, S2 or S3 line the parsing can still be
+         * extracted. In the case of a non S1, S2 or S3 line the parsing can still be
          * successful, but did not yield any extracted data bytes.
          */
         if (lineDataLen > 0U)
         {
-          /* TODO ##Vg Continue here by processing the extracted data and adress. And I
-           * need to implement the segment linked list. Probably also need to keep track
-           * of the file pointer before reading the line, to be able to track the file
-           * pointer at the start of a segment.
-           * -> Linked list and memory pool for segments created.
-           * -> lineFPtr holds file pointer of where the current line starts in the file.
-           * =============== CONTINUE HERE ================
-           */
-          /* Iterate over the linked list. */
-          segment = TbxListGetFirstItem(srecHandle.segmentList);
-          while (segment != NULL)
+          /* Does the parsed data fit at the end of the current segment? */
+          if (segment != NULL)
           {
-            /* TODO ##Vg Does the parsed firmware data fit at the start or end of this
-             * segment?
-             */
-
-            /* Continue with the next segment. */
-            segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+            /* Does it fit at the end of the segment? */
+            if (lineAddress == (segment->addr + segment->len))
+            {
+              segment->len += lineDataLen;
+            }
+            /* Data did not fit in the current segment. */
+            else
+            {
+              /* A new segment should be created. Invalidate the current segment to
+               * indicate this situation.
+               */
+              segment = NULL;
+            }
           }
-          /* TODO ##Vg Create a new segment if the parsed firmware data does not fit
-           * at the start of end of any existing segments.
-           */
 
+          /* Did the parsed data not fit in the current segment? */
+          if (segment == NULL)
+          {
+            /* Iterate over the linked list to try and find an existing segment that the
+             * data fits in.
+             */
+            segment = TbxListGetFirstItem(srecHandle.segmentList);
+            while (segment != NULL)
+            {
+              /* Does it fit at the end of this segment? */
+              if (lineAddress == (segment->addr + segment->len))
+              {
+                /* Update the length of the segment. */
+                segment->len += lineDataLen;
+                /* Segment found and updated so break the loop. */
+                break;
+              }
+              /* Continue with the next segment. */
+              segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+            }
 
+            /* Could a fitting segment not be found? */
+            if (segment == NULL)
+            {
+              /* Attempt to allocate memory to store the new segment. */
+              segment = TbxMemPoolAllocate(sizeof(tSRecSegment));
+              /* Automatically increase the memory pool if it was too small. */
+              if (segment == NULL)
+              {
+                /* No need to check the return value, because we'll attempt to allocate
+                 * from the memory pool right way. That will tell us if the memory pool
+                 * increase was successful.
+                 */
+                (void)TbxMemPoolCreate(1, sizeof(tSRecSegment));
+                /* Allocation should now work. */
+                segment = TbxMemPoolAllocate(sizeof(tSRecSegment));
+                /* Verify segment allocation. */
+                if (segment == NULL)
+                {
+                  /* Could not allocate memory. Heap is probably configured too small.
+                   * Increase TBX_CONF_HEAP_SIZE to resolve the problem. All we can
+                   * do now is flag the error.
+                   */
+                  result = TBX_ERROR;
+                  stopLineLoop = TBX_TRUE;
+                  continue;
+                }
+              }
+              /* Initialize the newly created segment. */
+              segment->addr = lineAddress;
+              segment->len = lineDataLen;
+              segment->fptr = lineFPtr;
+              /* Add the segment to the linked list. */
+              if (TbxListInsertItemBack(srecHandle.segmentList, segment) == TBX_ERROR)
+              {
+                /* Could not insert the segment into the linked list. Heap is probably
+                 * configured too small. Increase TBX_CONF_HEAP_SIZE to resolve the
+                 * problem. All we can do now is flag the error.
+                 */
+                result = TBX_ERROR;
+                stopLineLoop = TBX_TRUE;
+                continue;
+              }
+            }
+          }
         }
       }
     }
 
-    /* TODO ##Vg Implement SRecReaderFileOpen.
-     * - Open the file
-     * - Read all lines one at a time
-     * - Keep track of the size of the longest s-record line in the file
-     * - Determine segment info:
-     *   - file pointer to the first s-record in the file
-     *   - base address
-     *   - length
-     *
-     * There should be a local file info object that stores:
-     * - File handle
-     * - Linked list with segment info
-     * - Size of the largest s-record line
-     * - Data buffer for storing an s-record line
-     * - Data buffer for storing the segment data
-     */
+    /* Sort the segments inside the linked list if all went okay so far. */
+    if (result == TBX_OK)
+    {
+      TbxListSortItems(srecHandle.segmentList, SRecReaderCompareSegments);
+    }
+    /* Perform cleanup in case the file could not be properly opened. */
+    else
+    {
+      /* Make sure the file is closed. This includes the release of the segments linked
+       * list.
+       */
+      SRecReaderFileClose();
+    }
   }
 
   /* Give the result back to the caller. */
@@ -387,11 +432,18 @@ static void SRecReaderFileClose(void)
 static uint8_t SRecReaderSegmentGetCount(void)
 {
   uint8_t result = 0U;
+  size_t  listSize;
 
-  /* Only continue if a file is actually opened. */
-  if (srecHandle.fileOpened == TBX_TRUE)
+  /* Only continue if a file is actually opened and segments were extracted. */
+  if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
   {
-    /* TODO ##Vg Implement SRecReaderSegmentGetCount. */
+    /* The number of segments equals the size of the linked list. */
+    listSize = TbxListGetSize(srecHandle.segmentList);
+    /* Only update the result if the list size fits in it. */
+    if ( (listSize > 0U) && (listSize <= (uint8_t)UINT8_MAX) )
+    {
+      result = (uint8_t)listSize;
+    }
   }
 
   /* Give the result back to the caller. */
@@ -413,6 +465,7 @@ static uint8_t SRecReaderSegmentGetCount(void)
 static uint32_t SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
 {
   uint32_t result = 0U;
+  tSRecSegment const * segment;
 
   /* Verify parameters. */
   TBX_ASSERT((idx < SRecReaderSegmentGetCount()) && (address != NULL));
@@ -420,11 +473,30 @@ static uint32_t SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
   /* Only continue with valid parameters. */
   if ((idx < SRecReaderSegmentGetCount()) && (address != NULL))
   {
-    /* Only continue if a file is actually opened. */
-    if (srecHandle.fileOpened == TBX_TRUE)
+    /* Only continue if a file is actually opened and segments were extracted. */
+    if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
     {
-      /* TODO ##Vg Implement SRecReaderSegmentGetInfo. */
-      *address = 0U;
+      /* Only continue if the segment index is valid. */
+      if (idx < TbxListGetSize(srecHandle.segmentList))
+      {
+        /* Iterate over the linked list until the segment specified by the index. */
+        segment = TbxListGetFirstItem(srecHandle.segmentList);
+        while (idx > 0U)
+        {
+          /* Move to the next segment. */
+          segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+          /* Decrement the indexer. */
+          idx--;
+        }
+        /* Make sure a valid segment was found. */
+        if (segment != NULL)
+        {
+          /* Store the base memory address of the data in this segment. */
+          *address = segment->addr;
+          /* Update the result to hold the total number of bytse inside this segment. */
+          result = segment->len;
+        }
+      }
     }
   }
 
@@ -442,16 +514,36 @@ static uint32_t SRecReaderSegmentGetInfo(uint8_t idx, uint32_t * address)
 ****************************************************************************************/
 static void SRecReaderSegmentOpen(uint8_t idx)
 {
+  tSRecSegment const * segment;
+
   /* Verify parameter. */
   TBX_ASSERT(idx < SRecReaderSegmentGetCount());
 
   /* Only continue with valid parameter. */
   if (idx < SRecReaderSegmentGetCount())
   {
-    /* Only continue if a file is actually opened. */
-    if (srecHandle.fileOpened == TBX_TRUE)
+    /* Only continue if a file is actually opened and segments were extracted. */
+    if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
     {
-      /* TODO ##Vg Implement SRecReaderSegmentOpen. */
+      /* Only continue if the segment index is valid. */
+      if (idx < TbxListGetSize(srecHandle.segmentList))
+      {
+        /* Iterate over the linked list until the segment specified by the index. */
+        segment = TbxListGetFirstItem(srecHandle.segmentList);
+        while (idx > 0U)
+        {
+          /* Move to the next segment. */
+          segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+          /* Decrement the indexer. */
+          idx--;
+        }
+        /* Make sure a valid segment was found. */
+        if (segment != NULL)
+        {
+          /* Set the file pointer to the S-record line where this segment starts. */
+          (void)f_lseek(&srecHandle.file, segment->fptr);
+        }
+      }
     }
   }
 } /*** end of SRecReaderSegmentOpen ***/
@@ -479,8 +571,8 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   /* Only continue with valid parameters. */
   if ((address != NULL) && (len != NULL))
   {
-    /* Only continue if a file is actually opened. */
-    if (srecHandle.fileOpened == TBX_TRUE)
+    /* Only continue if a file is actually opened and segments were extracted. */
+    if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
     {
       /* TODO ##Vg Implement SRecReaderSegmentGetNextData. */
       *address = 0;
@@ -494,6 +586,38 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   /* Give the result back to the caller. */
   return result;
 } /*** end of SRecReaderSegmentGetNextData ***/
+
+
+/************************************************************************************//**
+** \brief     Compares the two segments based on their base address. Can be used for
+**            sorting the segments inside the linked list.
+** \param     item1 Pointer to the first item to compare.
+** \param     item2 Pointer to the seconds item to compare.
+** \return    TBX_TRUE if item 1 is greater than item 2. TBX_FALSE otherwise.
+**
+****************************************************************************************/
+static uint8_t SRecReaderCompareSegments(void const * item1, void const * item2)
+{
+  uint8_t              result = TBX_FALSE;
+  tSRecSegment const * segment1 = item1;
+  tSRecSegment const * segment2 = item2;
+
+  /* Verify parameters. */
+  TBX_ASSERT((item1 != NULL) && (item2 != NULL));
+
+  /* Only continue with valid parameters. */
+  if ((item1 != NULL) && (item2 != NULL))
+  {
+    /* Compare the segments based on its base address. */
+    if (segment1->addr > segment2->addr)
+    {
+      result = TBX_TRUE;
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of SRecReaderCompareSegments ***/
 
 
 /************************************************************************************//**

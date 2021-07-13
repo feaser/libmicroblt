@@ -41,6 +41,7 @@
 #include <microblt.h>                       /* LibMicroBLT                             */
 #include "app.h"                            /* Application header                      */
 #include "led.h"                            /* LED driver                              */
+#include "button.h"                         /* Push button driver                      */
 #include "stm32f4xx_hal.h"                  /* HAL drivers                             */
 
 
@@ -83,6 +84,8 @@ void AppInit(void)
   TbxAssertSetHandler(AppAssertionHandler);
   /* Initialize the LED driver. */
   LedInit();
+  /* Initialize the push button driver. */
+  ButtonInit();
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",

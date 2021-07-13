@@ -525,24 +525,20 @@ static void SRecReaderSegmentOpen(uint8_t idx)
     /* Only continue if a file is actually opened and segments were extracted. */
     if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
     {
-      /* Only continue if the segment index is valid. */
-      if (idx < TbxListGetSize(srecHandle.segmentList))
+      /* Iterate over the linked list until the segment specified by the index. */
+      segment = TbxListGetFirstItem(srecHandle.segmentList);
+      while (idx > 0U)
       {
-        /* Iterate over the linked list until the segment specified by the index. */
-        segment = TbxListGetFirstItem(srecHandle.segmentList);
-        while (idx > 0U)
-        {
-          /* Move to the next segment. */
-          segment = TbxListGetNextItem(srecHandle.segmentList, segment);
-          /* Decrement the indexer. */
-          idx--;
-        }
-        /* Make sure a valid segment was found. */
-        if (segment != NULL)
-        {
-          /* Set the file pointer to the S-record line where this segment starts. */
-          (void)f_lseek(&srecHandle.file, segment->fptr);
-        }
+        /* Move to the next segment. */
+        segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+        /* Decrement the indexer. */
+        idx--;
+      }
+      /* Make sure a valid segment was found. */
+      if (segment != NULL)
+      {
+        /* Set the file pointer to the S-record line where this segment starts. */
+        (void)f_lseek(&srecHandle.file, segment->fptr);
       }
     }
   }
@@ -570,8 +566,6 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   uint8_t          lineDataLen;
   FSIZE_t          lineFPtr;
   uint8_t          byteIdx;
-
-  /* TODO ##Vg Still need to test this function. */
 
   /* Verify parameters. */
   TBX_ASSERT((address != NULL) && (len != NULL));

@@ -314,7 +314,6 @@ uint8_t const * FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len)
 
   /* Give the result back to the caller. */
   return result;
-
 } /*** end of FirmwareSegmentGetNextData ***/
 
 

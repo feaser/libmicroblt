@@ -136,7 +136,8 @@ void AppInit(void)
 static void AppTask(void * pvParameters)
 {
   /* File system object. This is the work area for the logical drive. */
-  FATFS fileSystem = { 0 };
+  FATFS   fileSystem = { 0 };
+  uint8_t updateResult = TBX_OK;
 
   TBX_UNUSED_ARG(pvParameters);
 
@@ -145,18 +146,27 @@ static void AppTask(void * pvParameters)
   /* Initialize the firmware module for reading S-record firmware files. */
   BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
 
-  /* TODO ##Vg Temporarily added for testing, before button press implementation. */
-  (void)BltFirmwareFileOpen("demoprog.srec");
-  BltFirmwareFileClose();
-
   /* Enter infinite task loop. */
   for (;;)
   {
-    /* Wait indefinitely for the push button to be pressed. */
+    /* Wait indefinitely for the push button to be pressed, which this application uses
+     * as a trigger to start the firmware update.
+     */
     (void)xEventGroupWaitBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED,
                               pdTRUE, pdTRUE, portMAX_DELAY);
 
-    vTaskDelay(10);
+    /* Start the firmware update by opening the firmware file. */
+    updateResult = BltFirmwareFileOpen("demoprog.srec");
+
+    /* Only continue with the firmware update if the firmware file could be opened. */
+    if (updateResult == TBX_OK)
+    {
+      /* TODO ##Vg Implement firmware update logic here. */
+      vTaskDelay(1000);
+
+      /* Make sure to close the firmware file again. */
+      BltFirmwareFileClose();
+    }
   }
 
   /* Terminate the firmware module, if the code were to ever get here. */
@@ -201,24 +211,60 @@ static void AppButtonScanTask(void * pvParameters)
   const TickType_t scanIntervalTicks = 5U / portTICK_PERIOD_MS;
   tButtonState     lastButtonState = BUTTON_STATE_RELEASED;
   tButtonState     currentButtonState;
+  const TickType_t debounceTicks = 50U / portTICK_PERIOD_MS;
+  uint8_t          debounceCount = 0U;
+  uint8_t          debouncing = TBX_FALSE;
 
   TBX_UNUSED_ARG(pvParameters);
 
   /* Enter infinite task loop. */
   for (;;)
   {
-    /* Read the current state of the push button. */
-    currentButtonState = ButtonGetState();
-    /* Did the state change to being pressed? */
-    if ( (currentButtonState != lastButtonState) &&
-         (currentButtonState == BUTTON_STATE_PRESSED) )
+    /* Are we debouncing the push button's pressed event? */
+    if (debouncing == TBX_TRUE)
     {
-      /* Set the push button pressed event flag. */
-      (void)xEventGroupSetBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED);
-      /* TODO ##Vg Add debouncing. */
+      /* Did the button go back to the released state? */
+      if (ButtonGetState() == BUTTON_STATE_RELEASED)
+      {
+        /* Button is still bouncing so go back to detecting the initial button pressed
+         * event.
+         */
+        debouncing = TBX_FALSE;
+      }
+      /* Button is still in the pressed state. */
+      else
+      {
+        /* Decrement the debounce counter. */
+        if (debounceCount > 0U)
+        {
+          debounceCount--;
+          /* Are we done debouncing? */
+          if (debounceCount == 0U)
+          {
+            /* The button pressed event is now stable. */
+            debouncing = TBX_FALSE;
+            /* Set the push button pressed event flag. */
+            (void)xEventGroupSetBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED);
+          }
+        }
+      }
     }
-    /* Store the button state, as it is needed for change detection. */
-    lastButtonState = currentButtonState;
+    /* Not debouncing so see if the initial button pressed event occurred. */
+    else
+    {
+      /* Read the current state of the push button. */
+      currentButtonState = ButtonGetState();
+      /* Did the state change to being pressed? */
+      if ( (currentButtonState != lastButtonState) &&
+           (currentButtonState == BUTTON_STATE_PRESSED) )
+      {
+        /* Initialize the debounce counter and enable debouncing */
+        debounceCount = debounceTicks / scanIntervalTicks;
+        debouncing = TBX_TRUE;
+      }
+      /* Store the button state, as it is needed for change detection. */
+      lastButtonState = currentButtonState;
+    }
 
     /* Scan the state of the push button at a fixed interval. */
     vTaskDelay(scanIntervalTicks);

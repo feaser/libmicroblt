@@ -57,8 +57,14 @@
 /** \brief Priority of the push button scan task. */
 #define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t) 6U)
 
-/** \brief Devines the event flag bit for the push button pressed event. */
-#define APP_EVENT_FLAG_BUTTON_PRESSED  ((uint8_t)0x01U)
+/** \brief Event flag bit to request the default LED blink rate. */
+#define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
+
+/** \brief Event flag bit to request a faster LED blink rate. */
+#define APP_EVENT_LED_FAST_BLINKING    ((uint8_t)0x02U)
+
+/** \brief Event flag bit for the push button pressed event. */
+#define APP_EVENT_BUTTON_PRESSED       ((uint8_t)0x04U)
 
 
 /****************************************************************************************
@@ -82,16 +88,9 @@ static TaskHandle_t appLedBlinkTaskHandle = NULL;
 /** \brief Handle of the push button scan task. */
 static TaskHandle_t appButtonScanTaskHandle = NULL;
 
-/** \brief Handle of the button event group. */
-static EventGroupHandle_t buttonEventGroup;
+/** \brief Handle of the application event group. */
+static EventGroupHandle_t appEvents;
 
-
-/* TODO ##Vg Refactor file organization. Could move app.*, button.h and led.h to the
- * 'demos' parent directory. These are microcontroller independent. Would have
- * to create a new resource in Eclipse: APP_ROOT ${PROJECT_LOC}/..
- * Then rename the current App directory to Port. Afterwards add a new App directory,
- * linked to APP_ROOT.
- */
 
 /************************************************************************************//**
 ** \brief     Initializes the application. Should be called once during software program
@@ -106,8 +105,8 @@ void AppInit(void)
   LedInit();
   /* Initialize the push button driver. */
   ButtonInit();
-  /* Create the button event group. */
-  buttonEventGroup = xEventGroupCreate();
+  /* Create the application events group. */
+  appEvents = xEventGroupCreate();
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
@@ -158,21 +157,35 @@ static void AppTask(void * pvParameters)
     /* Wait indefinitely for the push button to be pressed, which this application uses
      * as a trigger to start the firmware update.
      */
-    (void)xEventGroupWaitBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED,
-                              pdTRUE, pdTRUE, portMAX_DELAY);
+    (void)xEventGroupWaitBits(appEvents, APP_EVENT_BUTTON_PRESSED, pdFALSE, pdTRUE,
+                              portMAX_DELAY);
+
+    /* Trigger event to request a faster LED link rate to indicate that a firmware
+     * update is in progress.
+     */
+    (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
 
     /* Start the firmware update by opening the firmware file. */
     updateResult = BltFirmwareFileOpen("demoprog.srec");
-
     /* Only continue with the firmware update if the firmware file could be opened. */
     if (updateResult == TBX_OK)
     {
-      /* TODO ##Vg Implement firmware update logic here. */
+      /* TODO ##Vg Implement firmware update logic here. Perhaps implement the entire
+       * firmware update part in a seperate function. It is then easier to reuse
+       * in another application.
+       */
       vTaskDelay(1000);
-
       /* Make sure to close the firmware file again. */
       BltFirmwareFileClose();
     }
+
+    /* Trigger event to request the default LED link rate to indicate that the firmware
+     * update is no longer active.
+     */
+    (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
+
+    /* Clear the push button pressed event, now that the firmwrae update completed. */
+    (void)xEventGroupClearBits(appEvents, APP_EVENT_BUTTON_PRESSED);
   }
 
   /* Terminate the firmware module, if the code were to ever get here. */
@@ -189,18 +202,34 @@ static void AppTask(void * pvParameters)
 ****************************************************************************************/
 static void AppLedBlinkTask(void * pvParameters)
 {
-  const TickType_t ledToggleTicks = 500U / portTICK_PERIOD_MS;
+  const TickType_t ledNormalToggleTicks = 500U / portTICK_PERIOD_MS;
+  const TickType_t ledFastToggleTicks   = 100U / portTICK_PERIOD_MS;
+  TickType_t       ledToggleTicks = ledNormalToggleTicks;
+  EventBits_t      eventBits;
 
   TBX_UNUSED_ARG(pvParameters);
-
-  /* TODO ##Vg Maybe support setting a different blinking frequency. For example blink
-   * faster during a firmware update.
-   */
 
   /* Enter infinite task loop. */
   for (;;)
   {
-    /* Toggle the LED at a fixed interval. */
+    /* Obtain the current state of the event bits. */
+    eventBits = xEventGroupGetBits(appEvents);
+    /* Check if a different blink rate for the LED is requested. */
+    if ((eventBits & APP_EVENT_LED_NORMAL_BLINKING) != 0)
+    {
+      /* Update the LED blink rate. */
+      ledToggleTicks = ledNormalToggleTicks;
+      /* Clear the event bits after processing the event. */
+      (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
+    }
+    else if ((eventBits & APP_EVENT_LED_FAST_BLINKING) != 0)
+    {
+      /* Update the LED blink rate. */
+      ledToggleTicks = ledFastToggleTicks;
+      /* Clear the event bits after processing the event. */
+      (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
+    }
+    /* Toggle the LED at the currently requested interval. */
     vTaskDelay(ledToggleTicks);
     LedToggleState();
   }
@@ -250,7 +279,7 @@ static void AppButtonScanTask(void * pvParameters)
             /* The button pressed event is now stable. */
             debouncing = TBX_FALSE;
             /* Set the push button pressed event flag. */
-            (void)xEventGroupSetBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED);
+            (void)xEventGroupSetBits(appEvents, APP_EVENT_BUTTON_PRESSED);
           }
         }
       }

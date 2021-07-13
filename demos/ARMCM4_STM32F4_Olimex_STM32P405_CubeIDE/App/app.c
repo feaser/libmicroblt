@@ -43,7 +43,6 @@
 #include "app.h"                            /* Application header                      */
 #include "led.h"                            /* LED driver                              */
 #include "button.h"                         /* Push button driver                      */
-#include "stm32f4xx_hal.h"                  /* HAL drivers                             */
 
 
 /****************************************************************************************
@@ -86,6 +85,13 @@ static TaskHandle_t appButtonScanTaskHandle = NULL;
 /** \brief Handle of the button event group. */
 static EventGroupHandle_t buttonEventGroup;
 
+
+/* TODO ##Vg Refactor file organization. Could move app.*, button.h and led.h to the
+ * 'demos' parent directory. These are microcontroller independent. Would have
+ * to create a new resource in Eclipse: APP_ROOT ${PROJECT_LOC}/..
+ * Then rename the current App directory to Port. Afterwards add a new App directory,
+ * linked to APP_ROOT.
+ */
 
 /************************************************************************************//**
 ** \brief     Initializes the application. Should be called once during software program

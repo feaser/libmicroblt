@@ -38,6 +38,7 @@
 #include <ff.h>                             /* FatFS                                   */
 #include <FreeRTOS.h>                       /* FreeRTOS                                */
 #include <task.h>                           /* FreeRTOS tasks                          */
+#include <event_groups.h>                   /* FreeRTOS event groups                   */
 #include <microblt.h>                       /* LibMicroBLT                             */
 #include "app.h"                            /* Application header                      */
 #include "led.h"                            /* LED driver                              */
@@ -54,12 +55,19 @@
 /** \brief Priority of the LED blink task. */
 #define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t) 6U)
 
+/** \brief Priority of the push button scan task. */
+#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t) 6U)
+
+/** \brief Devines the event flag bit for the push button pressed event. */
+#define APP_EVENT_FLAG_BUTTON_PRESSED  ((uint8_t)0x01U)
+
 
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
 static void AppTask(void * pvParameters);
 static void AppLedBlinkTask(void * pvParameters);
+static void AppButtonScanTask(void * pvParameters);
 static void AppAssertionHandler(const char * const file, uint32_t line);
 
 
@@ -71,6 +79,12 @@ static TaskHandle_t appTaskHandle = NULL;
 
 /** \brief Handle of the LED blink task. */
 static TaskHandle_t appLedBlinkTaskHandle = NULL;
+
+/** \brief Handle of the push button scan task. */
+static TaskHandle_t appButtonScanTaskHandle = NULL;
+
+/** \brief Handle of the button event group. */
+static EventGroupHandle_t buttonEventGroup;
 
 
 /************************************************************************************//**
@@ -86,6 +100,8 @@ void AppInit(void)
   LedInit();
   /* Initialize the push button driver. */
   ButtonInit();
+  /* Create the button event group. */
+  buttonEventGroup = xEventGroupCreate();
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
@@ -100,6 +116,13 @@ void AppInit(void)
               NULL,
               APP_LED_BLINK_TASK_PRIO,
               &appLedBlinkTaskHandle);
+  /* Create the push button scan task. */
+  xTaskCreate(AppButtonScanTask,
+              "AppButtonScanTask",
+              configMINIMAL_STACK_SIZE,
+              NULL,
+              APP_BUTTON_SCAN_TASK_PRIO,
+              &appButtonScanTaskHandle);
   /* Start the RTOS scheduler. */
   vTaskStartScheduler();
 } /*** end of AppInit ***/
@@ -129,8 +152,10 @@ static void AppTask(void * pvParameters)
   /* Enter infinite task loop. */
   for (;;)
   {
-    /* TODO ##Vg Wait for the pushbutton pressed event to happen. */
-    /* TODO ##Vg Implement a pushbutton driver module (Init/Get). */
+    /* Wait indefinitely for the push button to be pressed. */
+    (void)xEventGroupWaitBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED,
+                              pdTRUE, pdTRUE, portMAX_DELAY);
+
     vTaskDelay(10);
   }
 
@@ -152,6 +177,10 @@ static void AppLedBlinkTask(void * pvParameters)
 
   TBX_UNUSED_ARG(pvParameters);
 
+  /* TODO ##Vg Maybe support setting a different blinking frequency. For example blink
+   * faster during a firmware update.
+   */
+
   /* Enter infinite task loop. */
   for (;;)
   {
@@ -160,6 +189,41 @@ static void AppLedBlinkTask(void * pvParameters)
     LedToggleState();
   }
 } /*** end of AppLedBlinkTask ***/
+
+
+/************************************************************************************//**
+** \brief     LED blink task function.
+** \param     pvParameters Pointer to optional task parameters
+**
+****************************************************************************************/
+static void AppButtonScanTask(void * pvParameters)
+{
+  const TickType_t scanIntervalTicks = 5U / portTICK_PERIOD_MS;
+  tButtonState     lastButtonState = BUTTON_STATE_RELEASED;
+  tButtonState     currentButtonState;
+
+  TBX_UNUSED_ARG(pvParameters);
+
+  /* Enter infinite task loop. */
+  for (;;)
+  {
+    /* Read the current state of the push button. */
+    currentButtonState = ButtonGetState();
+    /* Did the state change to being pressed? */
+    if ( (currentButtonState != lastButtonState) &&
+         (currentButtonState == BUTTON_STATE_PRESSED) )
+    {
+      /* Set the push button pressed event flag. */
+      (void)xEventGroupSetBits(buttonEventGroup, APP_EVENT_FLAG_BUTTON_PRESSED);
+      /* TODO ##Vg Add debouncing. */
+    }
+    /* Store the button state, as it is needed for change detection. */
+    lastButtonState = currentButtonState;
+
+    /* Scan the state of the push button at a fixed interval. */
+    vTaskDelay(scanIntervalTicks);
+  }
+} /*** end of AppButtonScanTask ***/
 
 
 /************************************************************************************//**

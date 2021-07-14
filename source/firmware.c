@@ -278,11 +278,17 @@ void FirmwareSegmentOpen(uint8_t idx)
 **            that was opened with function SegmentOpen(). The idea is that you first
 **            open the segment and afterwards you can keep calling this function to
 **            read out the segment's firmware data. When all data is read, len will be
-**            set to zero and a NULL pointer is returned.
+**            set to zero and a non-NULL pointer is returned.
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
 ** \param     len  The length of the firmware data chunk is written to this pointer.
 ** \return    Data pointer to the read firmware if successul, NULL otherwise.
+** \attention There are three possible outsomes when calling this function:
+**            1) len > 0 and a non-NULL pointer is returned. This means valid data was
+**               read.
+**            2) len = 0 and a non-NULL pointer is returned. This means the end of the
+**               segment is reached and therefore no new data was actually read.
+**            3) A NULL pointer is returned. This happens only when an error occurred.
 **
 ****************************************************************************************/
 uint8_t const * FirmwareSegmentGetNextData(uint32_t * address, uint16_t * len)

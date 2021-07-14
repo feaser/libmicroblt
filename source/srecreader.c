@@ -65,29 +65,6 @@
 /****************************************************************************************
 * Type definitions
 ****************************************************************************************/
-/** \brief Structure that represents the handle to the S-record file, which groups all
- *         its relevent data.
- */
-typedef struct
-{
-  /** \brief Boolean flag to keep track if a file is opened or not. */
-  uint8_t    fileOpened;
-  /** \brief FatFS file object handle. */
-  FIL        file;
-  /** \brief Byte buffer for storing a line from the S-record file. */
-  char       lineBuf[SREC_LINE_BUFFER_SIZE];
-  /** \brief Byte buffer for storing the data from an S-record with the help of function
-   *         SRecReaderParseLine().
-   */
-  uint8_t    lineDataBuf[SREC_LINE_BUFFER_SIZE/2];
-  /** \brief Byte buffer for storing data extracted from an S-record with the help of
-   *         function SRecReaderSegmentGetNextData().
-   */
-  uint8_t    dataBuf[SREC_DATA_BUFFER_SIZE];
-  /** \brief Handle to the linked list with segments. */
-  tTbxList * segmentList;
-} tSRecHandle;
-
 /** \brief Structure that groups segment related info. */
 typedef struct
 {
@@ -98,6 +75,31 @@ typedef struct
   /** \brief File pointer inside the firmware file where this segment starts. */
   FSIZE_t  fptr;
 } tSRecSegment;
+
+/** \brief Structure that represents the handle to the S-record file, which groups all
+ *         its relevent data.
+ */
+typedef struct
+{
+  /** \brief Boolean flag to keep track if a file is opened or not. */
+  uint8_t              fileOpened;
+  /** \brief FatFS file object handle. */
+  FIL                  file;
+  /** \brief Byte buffer for storing a line from the S-record file. */
+  char                 lineBuf[SREC_LINE_BUFFER_SIZE];
+  /** \brief Byte buffer for storing the data from an S-record with the help of function
+   *         SRecReaderParseLine().
+   */
+  uint8_t              lineDataBuf[SREC_LINE_BUFFER_SIZE/2];
+  /** \brief Byte buffer for storing data extracted from an S-record with the help of
+   *         function SRecReaderSegmentGetNextData().
+   */
+  uint8_t              dataBuf[SREC_DATA_BUFFER_SIZE];
+  /** \brief Handle to the linked list with segments. */
+  tTbxList           * segmentList;
+  /** \brief Pointer to the currently opened segment. */
+  tSRecSegment const * openedSegment;
+} tSRecHandle;
 
 /** \brief Enumeration for the different S-record line types. */
 typedef enum
@@ -172,6 +174,7 @@ static void SRecReaderInit(void)
   /* Initialize the s-record handle members. */
   srecHandle.fileOpened = TBX_FALSE;
   srecHandle.segmentList = NULL;
+  srecHandle.openedSegment = NULL;
   /* Create a memory pool for segment info, with an initial size of 1. */
   memPoolStatus = TbxMemPoolCreate(1, sizeof(tSRecSegment));
   /* Make sure the memory pool could be created. If not, increase TBX_CONF_HEAP_SIZE. */
@@ -416,6 +419,8 @@ static void SRecReaderFileClose(void)
     /* Delete the linked list with segments. */
     TbxListDelete(srecHandle.segmentList);
     srecHandle.segmentList = NULL;
+    /* Reset the opened segment. */
+    srecHandle.openedSegment = NULL;
   }
 } /*** end of SRecReaderFileClose ***/
 
@@ -537,6 +542,8 @@ static void SRecReaderSegmentOpen(uint8_t idx)
       /* Make sure a valid segment was found. */
       if (segment != NULL)
       {
+        /* Keep track of the currently openeded segment. */
+        srecHandle.openedSegment = segment;
         /* Set the file pointer to the S-record line where this segment starts. */
         (void)f_lseek(&srecHandle.file, segment->fptr);
       }
@@ -550,11 +557,17 @@ static void SRecReaderSegmentOpen(uint8_t idx)
 **            that was opened with function SegmentOpen(). The idea is that you first
 **            open the segment and afterwards you can keep calling this function to
 **            read out the segment's firmware data. When all data is read, len will be
-**            set to zero and a NULL pointer is returned.
+**            set to zero and a non-NULL pointer is returned.
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
 ** \param     len  The length of the firmware data chunk is written to this pointer.
 ** \return    Data pointer to the read firmware if successul, NULL otherwise.
+** \attention There are three possible outsomes when calling this function:
+**            1) len > 0 and a non-NULL pointer is returned. This means valid data was
+**               read.
+**            2) len = 0 and a non-NULL pointer is returned. This means the end of the
+**               segment is reached and therefore no new data was actually read.
+**            3) A NULL pointer is returned. This happens only when an error occurred.
 **
 ****************************************************************************************/
 static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t * len)
@@ -573,8 +586,11 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
   /* Only continue with valid parameters. */
   if ((address != NULL) && (len != NULL))
   {
-    /* Only continue if a file is actually opened and segments were extracted. */
-    if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) )
+    /* Only continue if a file is actually opened, segments were extracted and a segment
+     * was actually opened.
+     */
+    if ( (srecHandle.fileOpened == TBX_TRUE) && (srecHandle.segmentList != NULL) &&
+         (srecHandle.openedSegment != NULL) )
     {
       /* Set the result to the valid databuffer, which indicates success. From now on
        * only set it to NULL, in case an error was detected.
@@ -639,23 +655,40 @@ static uint8_t const * SRecReaderSegmentGetNextData(uint32_t * address, uint16_t
             /* Set the base address of the data. */
             *address = lineAddress;
           }
-          /* Does this newly read data still belong to the same segment? In case it does,
-           * the data should fit right after the previously read data.
+          /* Does this newly read data still belong to the same segment? */
+          if ( (lineAddress < srecHandle.openedSegment->addr) ||
+               ((lineAddress + lineDataLen) >
+               (srecHandle.openedSegment->addr + srecHandle.openedSegment->len)) )
+          {
+            /* The data read from this line belongs to the a different segment. This
+             * means we are done and should not copy the data. We do rewind the file
+             * pointer, because the data hasn't actually been processed.
+             */
+            (void)f_lseek(&srecHandle.file, lineFPtr);
+            dataReadDone = TBX_TRUE;
+            continue;
+          }
+          /* Data does belong to this segment. This means that it should fit right after
+           * the previously read data. Do a quick sanity check to make sure this is the
+           * case.
            */
           if (lineAddress != (*address + *len))
           {
-            /* The data read from this line belongs to the a different segment. This
-             * means we are done and should not copy the data.
-             */
+            /* Flag the error by updating the result and resetting the length. */
+            *len = 0;
+            result = NULL;
+            /* Rewind the file pointer as well. */
+            (void)f_lseek(&srecHandle.file, lineFPtr);
             dataReadDone = TBX_TRUE;
             continue;
+
           }
           /* Still here so the newly read data does belong to the same segment, but we
            * can only copy it, if there is still space in the data buffer.
            */
           if ((*len + lineDataLen) > (uint16_t)SREC_DATA_BUFFER_SIZE)
           {
-            /* Data won´t fit in the data buffer. This means we are done, but need to
+            /* Data won't fit in the data buffer. This means we are done, but need to
              * make sure to rewind the file pointer for the next time this function is
              * called.
              */

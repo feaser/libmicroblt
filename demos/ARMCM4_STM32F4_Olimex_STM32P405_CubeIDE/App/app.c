@@ -43,6 +43,7 @@
 #include "app.h"                            /* Application header                      */
 #include "led.h"                            /* LED driver                              */
 #include "button.h"                         /* Push button driver                      */
+#include "can.h"                            /* CAN driver                              */
 
 
 /****************************************************************************************
@@ -73,6 +74,7 @@
 static void AppTask(void * pvParameters);
 static void AppLedBlinkTask(void * pvParameters);
 static void AppButtonScanTask(void * pvParameters);
+static void AppCanMessageReceived(tCanMsg const * msg);
 static void AppAssertionHandler(const char * const file, uint32_t line);
 
 
@@ -105,6 +107,8 @@ void AppInit(void)
   LedInit();
   /* Initialize the push button driver. */
   ButtonInit();
+  /* Initialize the CAN driver. */
+  CanInit(CAN_BAUDRATE_500K, AppCanMessageReceived);
   /* Create the application events group. */
   appEvents = xEventGroupCreate();
   /* Create the application task. */
@@ -305,6 +309,25 @@ static void AppButtonScanTask(void * pvParameters)
     vTaskDelay(scanIntervalTicks);
   }
 } /*** end of AppButtonScanTask ***/
+
+
+/************************************************************************************//**
+** \brief     Callback function that gets called each time a new CAN message was
+**            received.
+** \param     msg Pointer to the newly received CAN message.
+**
+****************************************************************************************/
+static void AppCanMessageReceived(tCanMsg const * msg)
+{
+  /* Verify parameter. */
+  TBX_ASSERT(msg != NULL);
+
+  /* Only continue with valid parameter. */
+  if (msg != NULL)
+  {
+    /* TODO ##Vg Implement AppCanMessageReceived(). */
+  }
+} /*** end of AppCanMessageReceived ***/
 
 
 /************************************************************************************//**

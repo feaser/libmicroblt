@@ -86,6 +86,16 @@ static const tCanBusTiming canTiming[] =
 
 
 /****************************************************************************************
+* Local data declarations
+****************************************************************************************/
+/** \brief CAN handle to be used in API calls. */
+static CAN_HandleTypeDef canHandle;
+
+/** \brief Function pointer for the message received callback handler. */
+static tCanReceivedCallback canReceivedCallback;
+
+
+/****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
 static uint32_t CanConvertBaudrate(tCanBaudrate baudrate);
@@ -102,11 +112,17 @@ static uint8_t  CanGetSpeedConfig(uint16_t baud, uint16_t * prescaler, uint8_t *
 ****************************************************************************************/
 void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
 {
-  uint16_t prescaler = 0;
-  uint8_t  tseg1 = 0;
-  uint8_t  tseg2 = 0;
-  uint32_t baudrateRaw;
-  uint8_t  speedConfigFound;
+  uint16_t          prescaler = 0;
+  uint8_t           tseg1 = 0;
+  uint8_t           tseg2 = 0;
+  uint32_t          baudrateRaw;
+  uint8_t           speedConfigFound;
+  CAN_FilterTypeDef filterConfig;
+  uint32_t          rxFilterId;
+  uint32_t          rxFilterMask;
+
+  /* Reset the message received callback handler. */
+  canReceivedCallback = NULL;
 
   /* Verify parameter. */
   TBX_ASSERT(callbackFcn != NULL);
@@ -114,6 +130,9 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
   /* Only continue with valid parameter. */
   if (callbackFcn != NULL)
   {
+    /* Set the message received callback handler. */
+    canReceivedCallback = callbackFcn;
+
     /* Compute raw baudrate in bits/sec. */
     baudrateRaw = CanConvertBaudrate(baudrate);
     /* Obtain bittiming configuration information. */
@@ -123,9 +142,68 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
     /* Only continue with a valid bittiming configuration. */
     if (speedConfigFound == TBX_OK)
     {
-      /* TODO ##Vg Implement CanInit(), It should support 11-bit and 29-bit CAN identifier
-       * reception. Note that CanConvertBaudrate() can be used to get the raw baudrate.
+      /* Set the CAN controller configuration. */
+      canHandle.Instance = CAN1;
+      canHandle.Init.TimeTriggeredMode = DISABLE;
+      canHandle.Init.AutoBusOff = DISABLE;
+      canHandle.Init.AutoWakeUp = DISABLE;
+      canHandle.Init.AutoRetransmission = ENABLE;
+      canHandle.Init.ReceiveFifoLocked = DISABLE;
+      canHandle.Init.TransmitFifoPriority = DISABLE;
+      canHandle.Init.Mode = CAN_MODE_NORMAL;
+      canHandle.Init.SyncJumpWidth = CAN_SJW_1TQ;
+      canHandle.Init.TimeSeg1 = ((uint32_t)tseg1 - 1U) << CAN_BTR_TS1_Pos;
+      canHandle.Init.TimeSeg2 = ((uint32_t)tseg2 - 1U) << CAN_BTR_TS2_Pos;
+      canHandle.Init.Prescaler = prescaler;
+      /* Initialize the CAN controller. This only fails if the CAN controller hardware is
+       * faulty. No need to evaluate the return value as there is nothing we can do about
+       * a faulty CAN controller.
        */
+      (void)HAL_CAN_Init(&canHandle);
+
+      /* Select the start slave bank number (for CAN1). This configuration assigns filter
+       * banks 0..13 to CAN1 and 14..27 to CAN2.
+       */
+      filterConfig.SlaveStartFilterBank = 14U;
+
+      /* Filter 0 is the first filter assigned to the bxCAN master (CAN1) and used for
+       * receiving all 11-bit CAN identifiers through FIFO 0.
+       */
+      rxFilterId = 0U;
+      rxFilterMask = 0U | CAN_RI0R_IDE;
+      filterConfig.FilterBank = 0U;
+      filterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+      filterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+      filterConfig.FilterIdHigh = (rxFilterId >> 16U) & 0x0000FFFFu;
+      filterConfig.FilterIdLow = rxFilterId & 0x0000FFFFu;
+      filterConfig.FilterMaskIdHigh = (rxFilterMask >> 16U) & 0x0000FFFFu;
+      filterConfig.FilterMaskIdLow = rxFilterMask & 0x0000FFFFu;
+      filterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+      filterConfig.FilterActivation = ENABLE;
+      (void)HAL_CAN_ConfigFilter(&canHandle, &filterConfig);
+
+      /* Filter 1 is the second filter assigned to the bxCAN master (CAN1) and used for
+       * receiving all 29-bit CAN identifiers through FIFO 1.
+       */
+      rxFilterId = 0U | CAN_RI0R_IDE;
+      rxFilterMask = 0U | CAN_RI0R_IDE;
+      filterConfig.FilterBank = 1U;
+      filterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+      filterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+      filterConfig.FilterIdHigh = (rxFilterId >> 16U) & 0x0000FFFFu;
+      filterConfig.FilterIdLow = rxFilterId & 0x0000FFFFu;
+      filterConfig.FilterMaskIdHigh = (rxFilterMask >> 16U) & 0x0000FFFFu;
+      filterConfig.FilterMaskIdLow = rxFilterMask & 0x0000FFFFu;
+      filterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+      filterConfig.FilterActivation = ENABLE;
+      (void)HAL_CAN_ConfigFilter(&canHandle, &filterConfig);
+
+      /* TODO ##Vg Enable the reception interrupts handlers for FIFO0 and FIFO1. */
+
+      /* Start the CAN peripheral. no need to evaluate the return value as there is
+       * nothing we can do about a faulty CAN controller.
+       */
+      (void)HAL_CAN_Start(&canHandle);
     }
   }
 } /*** end of CanInit ***/
@@ -137,7 +215,7 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
 ****************************************************************************************/
 void CanTerminate(void)
 {
-  /* TODO ##Vg Implement CanTerminate(). */
+  /* TODO ##Vg Implement CanTerminate(). Pretty much just disable the CAN interrupts. */
 } /*** end of CanTerminate ***/
 
 
@@ -150,7 +228,10 @@ void CanTerminate(void)
 ****************************************************************************************/
 uint8_t CanTransmit(tCanMsg const * msg)
 {
-  uint8_t result = TBX_ERROR;
+  uint8_t             result = TBX_ERROR;
+  CAN_TxHeaderTypeDef txMsgHeader;
+  HAL_StatusTypeDef   txStatus;
+  uint32_t            txMsgMailbox;
 
   /* Verify parameter. */
   TBX_ASSERT(msg != NULL);
@@ -158,7 +239,31 @@ uint8_t CanTransmit(tCanMsg const * msg)
   /* Only continue with valid parameter. */
   if (msg != NULL)
   {
-    /* TODO ##Vg Implement CanTransmit(). Maybe add a transmit FIFO using MicroTBX. */
+    /* Configure the message that should be transmitted. */
+    if (msg->ext == TBX_FALSE)
+    {
+      /* set the 11-bit CAN identifier. */
+      txMsgHeader.StdId = msg->id;
+      txMsgHeader.IDE = CAN_ID_STD;
+    }
+    else
+    {
+      /* set the 29-bit CAN identifier. */
+      txMsgHeader.ExtId = msg->id;
+      txMsgHeader.IDE = CAN_ID_EXT;
+    }
+    txMsgHeader.RTR = CAN_RTR_DATA;
+    txMsgHeader.DLC = msg->len;
+
+    /* Attempt to submit the message for transmission. */
+    txStatus = HAL_CAN_AddTxMessage(&canHandle, &txMsgHeader, (uint8_t *)msg->data,
+                                    (uint32_t *)&txMsgMailbox);
+    /* Check if a free transmit mailbox was avaible to transmit the message. */
+    if (txStatus == HAL_OK)
+    {
+      /* Message is in the mailbox and will be transmitted. Update the result. */
+      result = TBX_OK;
+    }
   }
 
   /* Give the result back to the caller. */

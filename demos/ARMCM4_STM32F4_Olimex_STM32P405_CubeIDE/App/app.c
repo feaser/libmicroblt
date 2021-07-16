@@ -50,13 +50,13 @@
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO                  ((UBaseType_t) 8U)
+#define APP_TASK_PRIO                  ((UBaseType_t)8U)
 
 /** \brief Priority of the LED blink task. */
-#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t) 6U)
+#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)6U)
 
 /** \brief Priority of the push button scan task. */
-#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t) 6U)
+#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)6U)
 
 /** \brief Event flag bit to request the default LED blink rate. */
 #define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
@@ -93,6 +93,9 @@ static TaskHandle_t appButtonScanTaskHandle = NULL;
 /** \brief Handle of the application event group. */
 static EventGroupHandle_t appEvents;
 
+/** \brief File system object. This is the work area for the logical drive. */
+static FATFS fileSystem = { 0 };
+
 
 /************************************************************************************//**
 ** \brief     Initializes the application. Should be called once during software program
@@ -103,12 +106,19 @@ void AppInit(void)
 {
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
+
   /* Initialize the LED driver. */
   LedInit();
   /* Initialize the push button driver. */
   ButtonInit();
   /* Initialize the CAN driver. */
   CanInit(CAN_BAUDRATE_500K, AppCanMessageReceived);
+
+  /* Mount the file system, using logical disk 0 */
+  f_mount(&fileSystem, "0:", 0);
+  /* Initialize the firmware module for reading S-record firmware files. */
+  BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
+
   /* Create the application events group. */
   appEvents = xEventGroupCreate();
   /* Create the application task. */
@@ -144,16 +154,9 @@ void AppInit(void)
 ****************************************************************************************/
 static void AppTask(void * pvParameters)
 {
-  /* File system object. This is the work area for the logical drive. */
-  FATFS   fileSystem = { 0 };
   uint8_t updateResult = TBX_OK;
 
   TBX_UNUSED_ARG(pvParameters);
-
-  /* Mount the file system, using logical disk 0 */
-  f_mount(&fileSystem, "0:", 0);
-  /* Initialize the firmware module for reading S-record firmware files. */
-  BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
 
   /* Enter infinite task loop. */
   for (;;)
@@ -164,7 +167,7 @@ static void AppTask(void * pvParameters)
     (void)xEventGroupWaitBits(appEvents, APP_EVENT_BUTTON_PRESSED, pdFALSE, pdTRUE,
                               portMAX_DELAY);
 
-    /* Trigger event to request a faster LED link rate to indicate that a firmware
+    /* Trigger event to request a faster LED blink rate to indicate that a firmware
      * update is in progress.
      */
     (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
@@ -183,7 +186,7 @@ static void AppTask(void * pvParameters)
       BltFirmwareFileClose();
     }
 
-    /* Trigger event to request the default LED link rate to indicate that the firmware
+    /* Trigger event to request the default LED blink rate to indicate that the firmware
      * update is no longer active.
      */
     (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
@@ -191,11 +194,6 @@ static void AppTask(void * pvParameters)
     /* Clear the push button pressed event, now that the firmwrae update completed. */
     (void)xEventGroupClearBits(appEvents, APP_EVENT_BUTTON_PRESSED);
   }
-
-  /* Terminate the firmware module, if the code were to ever get here. */
-  BltFirmwareTerminate();
-  /* Unregister work area prior to discarding it, if the code were to ever get here. */
-  f_mount(NULL, "0:", 0);
 } /*** end of AppTask ***/
 
 
@@ -241,7 +239,7 @@ static void AppLedBlinkTask(void * pvParameters)
 
 
 /************************************************************************************//**
-** \brief     LED blink task function.
+** \brief     Push button scan task function.
 ** \param     pvParameters Pointer to optional task parameters
 **
 ****************************************************************************************/
@@ -315,6 +313,7 @@ static void AppButtonScanTask(void * pvParameters)
 ** \brief     Callback function that gets called each time a new CAN message was
 **            received.
 ** \param     msg Pointer to the newly received CAN message.
+** \attention Note that this function is called at interrupt level.
 **
 ****************************************************************************************/
 static void AppCanMessageReceived(tCanMsg const * msg)

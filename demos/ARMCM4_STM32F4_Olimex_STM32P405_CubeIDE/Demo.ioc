@@ -2,7 +2,6 @@
 Mcu.Family=STM32F4
 RCC.PLLSourceVirtual=RCC_PLLSOURCE_HSE
 ProjectManager.MainLocation=Core/Src
-NVIC.CAN1_RX1_IRQn=true\:0\:0\:false\:false\:true\:true\:true
 CAN1.NART=ENABLE
 ProjectManager.ProjectFileName=Demo.ioc
 PH0-OSC_IN.Signal=RCC_OSC_IN
@@ -147,7 +146,6 @@ ProjectManager.DeviceId=STM32F405RGTx
 PB12.GPIOParameters=PinState
 PB12.Signal=GPIO_Output
 ProjectManager.LibraryCopy=1
-NVIC.CAN1_RX0_IRQn=true\:0\:0\:false\:false\:true\:true\:true
 PB15.Locked=true
 CAN1.CalculateTimeQuantum=166.66666666666669
 isbadioc=false

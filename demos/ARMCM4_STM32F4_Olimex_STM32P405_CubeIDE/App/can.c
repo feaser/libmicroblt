@@ -121,6 +121,10 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
   uint32_t          rxFilterId;
   uint32_t          rxFilterMask;
 
+  /* Note that the GPIO pin initialization and clock enabling for the CAN peripheral is
+   * already handled by HAL_CAN_MspInit().
+   */
+
   /* Reset the message received callback handler. */
   canReceivedCallback = NULL;
 
@@ -198,7 +202,7 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
       filterConfig.FilterActivation = ENABLE;
       (void)HAL_CAN_ConfigFilter(&canHandle, &filterConfig);
 
-      /* Start the CAN peripheral. no need to evaluate the return value as there is
+      /* Start the CAN peripheral. No need to evaluate the return value as there is
        * nothing we can do about a faulty CAN controller.
        */
       (void)HAL_CAN_Start(&canHandle);
@@ -217,7 +221,7 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
 
 
 /************************************************************************************//**
-** \brief     Terminated the CAN driver.
+** \brief     Terminate the CAN driver.
 **
 ****************************************************************************************/
 void CanTerminate(void)
@@ -272,7 +276,7 @@ uint8_t CanTransmit(tCanMsg const * msg)
 
     /* Attempt to submit the message for transmission. */
     txStatus = HAL_CAN_AddTxMessage(&canHandle, &txMsgHeader, (uint8_t *)msg->data,
-                                    (uint32_t *)&txMsgMailbox);
+                                    &txMsgMailbox);
     /* Check if a free transmit mailbox was avaible to transmit the message. */
     if (txStatus == HAL_OK)
     {
@@ -361,7 +365,6 @@ static uint8_t CanGetSpeedConfig(uint16_t baud, uint16_t * prescaler, uint8_t * 
   {
     /* Determine and store CAN peripheral clock speed in kHz. */
     canClockFreqkHz = HAL_RCC_GetPCLK1Freq() / 1000U;
-
 
     /* Loop through all possible time quanta configurations to find a match. */
     for (cnt = 0U; cnt < sizeof(canTiming)/sizeof(canTiming[0]); cnt++)
@@ -471,6 +474,32 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
     }
   }
 } /*** end of HAL_CAN_RxFifo0MsgPendingCallback ***/
+
+
+/****************************************************************************************
+*   I N T E R R U P T   S E R V I C E   R O U T I N E S
+****************************************************************************************/
+
+/************************************************************************************//**
+** \brief     CAN1 FIF0 interrupt service routine.
+**
+****************************************************************************************/
+void CAN1_RX0_IRQHandler(void)
+{
+  /* Pass the interrupt event on to the HAL CAN driver. */
+  HAL_CAN_IRQHandler(&canHandle);
+} /*** end of CAN1_RX0_IRQHandler ***/
+
+
+/************************************************************************************//**
+** \brief     CAN1 FIF1 interrupt service routine.
+**
+****************************************************************************************/
+void CAN1_RX1_IRQHandler(void)
+{
+  /* Pass the interrupt event on to the HAL CAN driver. */
+  HAL_CAN_IRQHandler(&canHandle);
+} /*** end of CAN1_RX1_IRQHandler ***/
 
 
 /*********************************** end of can.c **************************************/

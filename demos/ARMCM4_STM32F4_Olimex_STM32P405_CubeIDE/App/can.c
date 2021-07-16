@@ -198,12 +198,19 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
       filterConfig.FilterActivation = ENABLE;
       (void)HAL_CAN_ConfigFilter(&canHandle, &filterConfig);
 
-      /* TODO ##Vg Enable the reception interrupts handlers for FIFO0 and FIFO1. */
-
       /* Start the CAN peripheral. no need to evaluate the return value as there is
        * nothing we can do about a faulty CAN controller.
        */
       (void)HAL_CAN_Start(&canHandle);
+
+      /* Enable the message reception interrupts handlers for FIFO0 and FIFO1. */
+      HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 0, 0);
+      HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
+      HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 0, 0);
+      HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+      /* Activate CAN message reception notifications. */
+      (void)HAL_CAN_ActivateNotification(&canHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+      (void)HAL_CAN_ActivateNotification(&canHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
     }
   }
 } /*** end of CanInit ***/
@@ -215,7 +222,15 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
 ****************************************************************************************/
 void CanTerminate(void)
 {
-  /* TODO ##Vg Implement CanTerminate(). Pretty much just disable the CAN interrupts. */
+  /* Deactivate CAN message reception notifications. */
+  (void)HAL_CAN_DeactivateNotification(&canHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
+  (void)HAL_CAN_DeactivateNotification(&canHandle, CAN_IT_RX_FIFO1_MSG_PENDING);
+  /* Disable the message reception interrupts handlers for FIFO0 and FIFO1. */
+  HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
+  HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+
+  /* Stop the CAN peripheral. */
+  (void)HAL_CAN_Stop(&canHandle);
 } /*** end of CanTerminate ***/
 
 
@@ -374,6 +389,88 @@ static uint8_t CanGetSpeedConfig(uint16_t baud, uint16_t * prescaler, uint8_t * 
   /* Give the result back to the caller. */
   return result;
 } /*** end of CanGetSpeedConfig ***/
+
+
+/************************************************************************************//**
+** \brief     HAL driver callback function that gets called on interrupt level when
+**            a new CAN message is available in message reception FIFO 0. This CAN driver
+**            configured FIFO 0 for the reception of messages with an 11-bit identifier.
+** \param     hcan CAN peripheral handle on which the event occured.
+**
+****************************************************************************************/
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef * hcan)
+{
+  CAN_RxHeaderTypeDef rxMsgHeader;
+  tCanMsg             rxMsg;
+
+  /* Verify parameter. */
+  TBX_ASSERT(hcan != NULL);
+
+  /* Only continue with valid parameter. */
+  if (hcan != NULL)
+  {
+    /* Read out the newly received message. */
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rxMsgHeader, rxMsg.data) == HAL_OK)
+    {
+      /* This reception FIFO is configured to receive just 11-bit CAN message identifers.
+       * Verify that this is actually the case.
+       */
+      TBX_ASSERT(rxMsgHeader.IDE == CAN_ID_STD);
+
+      /* Store the message information. Note that the data is already copied. */
+      rxMsg.id = rxMsgHeader.StdId;
+      rxMsg.len = rxMsgHeader.DLC;
+      rxMsg.ext = TBX_FALSE;
+
+      /* Invoke the message reception callback function. */
+      if (canReceivedCallback != NULL)
+      {
+        canReceivedCallback(&rxMsg);
+      }
+    }
+  }
+} /*** end of HAL_CAN_RxFifo0MsgPendingCallback ***/
+
+
+/************************************************************************************//**
+** \brief     HAL driver callback function that gets called on interrupt level when
+**            a new CAN message is available in message reception FIFO 1. This CAN driver
+**            configured FIFO 0 for the reception of messages with an 29-bit identifier.
+** \param     hcan CAN peripheral handle on which the event occured.
+**
+****************************************************************************************/
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  CAN_RxHeaderTypeDef rxMsgHeader;
+  tCanMsg             rxMsg;
+
+  /* Verify parameter. */
+  TBX_ASSERT(hcan != NULL);
+
+  /* Only continue with valid parameter. */
+  if (hcan != NULL)
+  {
+    /* Read out the newly received message. */
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &rxMsgHeader, rxMsg.data) == HAL_OK)
+    {
+      /* This reception FIFO is configured to receive just 29-bit CAN message identifers.
+       * Verify that this is actually the case.
+       */
+      TBX_ASSERT(rxMsgHeader.IDE == CAN_ID_EXT);
+
+      /* Store the message information. Note that the data is already copied. */
+      rxMsg.id = rxMsgHeader.ExtId;
+      rxMsg.len = rxMsgHeader.DLC;
+      rxMsg.ext = TBX_TRUE;
+
+      /* Invoke the message reception callback function. */
+      if (canReceivedCallback != NULL)
+      {
+        canReceivedCallback(&rxMsg);
+      }
+    }
+  }
+} /*** end of HAL_CAN_RxFifo0MsgPendingCallback ***/
 
 
 /*********************************** end of can.c **************************************/

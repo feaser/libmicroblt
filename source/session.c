@@ -106,7 +106,7 @@ void SessionTerminate(void)
 ****************************************************************************************/
 uint8_t SessionStart(void)
 {
-  uint8_t result = TBX_FALSE;
+  uint8_t result = TBX_ERROR;
   
   /* Pass the request on to the linked protocol module. */
   if (protocolPtr != NULL)

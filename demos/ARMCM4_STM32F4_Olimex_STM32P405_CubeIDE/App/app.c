@@ -104,6 +104,17 @@ static FATFS fileSystem = { 0 };
 ****************************************************************************************/
 void AppInit(void)
 {
+  tBltSessionSettingsXcpV10 const sessionSettings =
+  {
+    .timeoutT1   = 1000U,
+    .timeoutT3   = 2000U,
+    .timeoutT4   = 10000U,
+    .timeoutT5   = 1000U,
+    .timeoutT6   = 50U,
+    .timeoutT7   = 2000U,
+    .connectMode = 0U
+  };
+
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
 
@@ -118,6 +129,8 @@ void AppInit(void)
   f_mount(&fileSystem, "0:", 0);
   /* Initialize the firmware module for reading S-record firmware files. */
   BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
+  /* Initialize the session module for firmware updates using the XCP protocol. */
+  BltSessionInit(BLT_SESSION_XCP_V10, &sessionSettings);
 
   /* Create the application events group. */
   appEvents = xEventGroupCreate();

@@ -3,5 +3,6 @@ microblt.c
 firmware.c
 srecreader.c
 session.c
+xcploader.c
 
 

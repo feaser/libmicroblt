@@ -41,6 +41,7 @@
 #include <event_groups.h>                   /* FreeRTOS event groups                   */
 #include <microblt.h>                       /* LibMicroBLT                             */
 #include "app.h"                            /* Application header                      */
+#include "time.h"                           /* Time driver                             */
 #include "led.h"                            /* LED driver                              */
 #include "button.h"                         /* Push button driver                      */
 #include "can.h"                            /* CAN driver                              */
@@ -71,11 +72,14 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-static void AppTask(void * pvParameters);
-static void AppLedBlinkTask(void * pvParameters);
-static void AppButtonScanTask(void * pvParameters);
-static void AppCanMessageReceived(tCanMsg const * msg);
-static void AppAssertionHandler(const char * const file, uint32_t line);
+static void     AppTask(void * pvParameters);
+static void     AppLedBlinkTask(void * pvParameters);
+static void     AppButtonScanTask(void * pvParameters);
+static uint32_t AppPortSystemGetTime(void);
+static uint8_t  AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket);
+static uint8_t  AppPortXcpReceivePacket(tPortXcpPacket * rxPacket);
+static void     AppCanMessageReceived(tCanMsg const * msg);
+static void     AppAssertionHandler(const char * const file, uint32_t line);
 
 
 /****************************************************************************************
@@ -115,9 +119,19 @@ void AppInit(void)
     .connectMode = 0U
   };
 
+  tPort const portInterface =
+  {
+    .SystemGetTime = AppPortSystemGetTime,
+    .XcpTransmitPacket = AppPortXcpTransmitPacket,
+    .XcpReceivePacket = AppPortXcpReceivePacket
+  };
+
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
 
+
+  /* Initialize the time driver. */
+  TimeInit();
   /* Initialize the LED driver. */
   LedInit();
   /* Initialize the push button driver. */
@@ -127,6 +141,8 @@ void AppInit(void)
 
   /* Mount the file system, using logical disk 0 */
   f_mount(&fileSystem, "0:", 0);
+  /* Initialize the port module for linking the hardware dependent parts. */
+  BltPortInit(&portInterface);
   /* Initialize the firmware module for reading S-record firmware files. */
   BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
   /* Initialize the session module for firmware updates using the XCP protocol. */
@@ -320,6 +336,77 @@ static void AppButtonScanTask(void * pvParameters)
     vTaskDelay(scanIntervalTicks);
   }
 } /*** end of AppButtonScanTask ***/
+
+
+/************************************************************************************//**
+** \brief     Obtains the current system time in milliseconds.
+** \return    Current system time in milliseconds.
+**
+****************************************************************************************/
+static uint32_t AppPortSystemGetTime(void)
+{
+  /* Obtain the current value of the millisecond timer. */
+  return TimeGet();
+} /*** end of AppPortSystemGetTime ***/
+
+
+/************************************************************************************//**
+** \brief     Transmits an XCP packet using the transport layer implemented by the port.
+**            The transmission itself can be blocking.
+** \param     txPacket The XCP packet to transmit using the application's transport layer
+**            of choice.
+** \return    TBX_OK if the packet could be transmitted, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket)
+{
+  uint8_t result = TBX_ERROR;
+
+  /* Verify parameter. */
+  TBX_ASSERT(txPacket != NULL);
+
+  /* Only continue with valid parameter. */
+  if (txPacket != NULL)
+  {
+    /* TODO ##Vg Implement AppPortXcpTransmitPacket(). Basically just send a CAN
+     * message with the 0x667 ID. Also check that len is not more than that of a
+     * CAN message.
+     */
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpTransmitPacket ***/
+
+
+/************************************************************************************//**
+** \brief     Attempts to receive an XCP packet using the transport layer implemented by
+**            the port. The reception should be non-blocking.
+** \param     rxPacket Structure where the newly received XCP packet should be stored.
+** \return    TBX_TRUE if a packet was received, TBX_FALSE otherwise.
+**
+****************************************************************************************/
+static uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
+{
+  uint8_t result = TBX_FALSE;
+
+  /* Verify parameter. */
+  TBX_ASSERT(rxPacket != NULL);
+
+  /* Only continue with valid parameter. */
+  if (rxPacket != NULL)
+  {
+    /* TODO ##Vg Implement AppPortXcpReceivePacket(). Basically just see if a CAN message
+     * with the 0x7E1 ID was received. To be correct also check that the received len
+     * is not less than that of the rxPacket one. Will never be a problem on CAN, but
+     * just to set the right example. Keep in mind that a critical section is needed
+     * for reading the CAN message.
+     */
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpReceivePacket ****/
 
 
 /************************************************************************************//**

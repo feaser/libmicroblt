@@ -39,6 +39,7 @@
 #include <ff.h>                             /* FatFS                                   */
 #include "session.h"                        /* Communication session module            */
 #include "xcploader.h"                      /* XCP communication protocol module       */
+#include "port.h"                           /* Port module                             */
 
 
 /****************************************************************************************
@@ -58,6 +59,8 @@ static void    XcpLoaderStop(void);
 static uint8_t XcpLoaderClearMemory(uint32_t address, uint32_t len);
 static uint8_t XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const * data);
 static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data);
+static uint8_t XcpExchangePacket(tPortXcpPacket const * txPacket,
+                                 tPortXcpPacket * rxPacket, uint16_t timeout);
 
 
 /***********************************************************************************//**
@@ -115,8 +118,6 @@ static void XcpLoaderInit(void const * settings)
   {
     /* Shallow copy the XCP settings for later usage. */
     xcpSettings = *xcpSettingsPtr;
-
-    /* TODO ##Vg Initialize the XCP transport layer (port). */
   }
 } /*** end of XcpLoaderInit ***/
 
@@ -127,7 +128,7 @@ static void XcpLoaderInit(void const * settings)
 ****************************************************************************************/
 static void XcpLoaderTerminate(void)
 {
-  /* TODO ##Vg Terminate the XCP transport layer (port). */
+  /* Nothing to do currently, so just leave it empty for now. */
 } /*** end of XcpLoaderTerminate ***/
 
 
@@ -245,6 +246,40 @@ static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data)
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpLoaderReadData ***/
+
+
+/************************************************************************************//**
+** \brief     Transmits an XCP packet on the transport layer and attempts to receive the
+**            response packet within the specified timeout.
+** \param     txPacket Pointer to the packet to transmit.
+** \param     rxPacket Pointer where the received packet info is stored.
+** \param     timeout Maximum time in milliseconds to wait for the reception of the
+**            response packet.
+** \return    TBX_OK if successful and a response packet was received, TBX_ERROR
+**            otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpExchangePacket(tPortXcpPacket const * txPacket,
+                                 tPortXcpPacket * rxPacket, uint16_t timeout)
+{
+  uint8_t result = TBX_ERROR;
+
+  TBX_UNUSED_ARG(timeout);
+
+  /* Check parameters. */
+  TBX_ASSERT((txPacket != NULL) && (rxPacket != NULL) && (timeout > 0U));
+
+  /* Only continue if the parameters are valid. */
+  if ((txPacket != NULL) && (rxPacket != NULL) && (timeout > 0U))
+  {
+    /* TODO ##Vg Implement XcpExchangePacket(). Note that for accessing the port
+     * specifics, you can use something like: PortGet()->SystemGetTime();
+     */
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpExchangePacket ***/
 
 
 /*********************************** end of xcploader.c ********************************/

@@ -4,5 +4,6 @@ firmware.c
 srecreader.c
 session.c
 xcploader.c
+port.c
 
 

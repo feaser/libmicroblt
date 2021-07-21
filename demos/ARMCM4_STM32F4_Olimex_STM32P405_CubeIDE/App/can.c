@@ -207,10 +207,13 @@ void CanInit(tCanBaudrate baudrate, tCanReceivedCallback callbackFcn)
        */
       (void)HAL_CAN_Start(&canHandle);
 
-      /* Enable the message reception interrupts handlers for FIFO0 and FIFO1. */
-      HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 0, 0);
+      /* Enable the message reception interrupts handlers for FIFO0 and FIFO1. Note that
+       * when using FreeRTOS, the NVIC priority number should be >=
+       * configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY.
+       */
+      HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 5U, 0U);
       HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
-      HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 0, 0);
+      HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 5U, 0U);
       HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
       /* Activate CAN message reception notifications. */
       (void)HAL_CAN_ActivateNotification(&canHandle, CAN_IT_RX_FIFO0_MSG_PENDING);
@@ -273,6 +276,7 @@ uint8_t CanTransmit(tCanMsg const * msg)
     }
     txMsgHeader.RTR = CAN_RTR_DATA;
     txMsgHeader.DLC = msg->len;
+    txMsgHeader.TransmitGlobalTime = DISABLE;
 
     /* Attempt to submit the message for transmission. */
     txStatus = HAL_CAN_AddTxMessage(&canHandle, &txMsgHeader, (uint8_t *)msg->data,

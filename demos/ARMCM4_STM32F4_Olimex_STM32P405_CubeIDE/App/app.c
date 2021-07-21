@@ -97,6 +97,9 @@ static TaskHandle_t appButtonScanTaskHandle = NULL;
 /** \brief Handle of the application event group. */
 static EventGroupHandle_t appEvents;
 
+/** \brief Handle of the queue for receiving XCP related CAN messages. */
+static QueueHandle_t appXcpCanRxMsgQueue = NULL;
+
 /** \brief File system object. This is the work area for the logical drive. */
 static FATFS fileSystem = { 0 };
 
@@ -129,7 +132,6 @@ void AppInit(void)
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
 
-
   /* Initialize the time driver. */
   TimeInit();
   /* Initialize the LED driver. */
@@ -150,10 +152,12 @@ void AppInit(void)
 
   /* Create the application events group. */
   appEvents = xEventGroupCreate();
+  /* Create the queue for storing the received XCP CAN message. */
+  appXcpCanRxMsgQueue = xQueueCreate(1U, sizeof(tCanMsg));
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
-              configMINIMAL_STACK_SIZE + 256,
+              configMINIMAL_STACK_SIZE + 512,
               NULL,
               APP_TASK_PRIO,
               &appTaskHandle);
@@ -360,7 +364,10 @@ static uint32_t AppPortSystemGetTime(void)
 ****************************************************************************************/
 static uint8_t AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket)
 {
-  uint8_t result = TBX_ERROR;
+  uint8_t        result = TBX_ERROR;
+  uint32_t const xcpCanTxMsgID = 0x667U;
+  tCanMsg        txMsg;
+  uint8_t        idx;
 
   /* Verify parameter. */
   TBX_ASSERT(txPacket != NULL);
@@ -368,10 +375,28 @@ static uint8_t AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket)
   /* Only continue with valid parameter. */
   if (txPacket != NULL)
   {
-    /* TODO ##Vg Implement AppPortXcpTransmitPacket(). Basically just send a CAN
-     * message with the 0x667 ID. Also check that len is not more than that of a
-     * CAN message.
+    /* Store the XCP packet in the CAN message if its length does not exceed that
+     * of a CAN message.
      */
+    if (txPacket->len <= CAN_DATA_LEN_MAX)
+    {
+      /* Copy the data bytes. */
+      for (idx = 0U; idx < txPacket->len; idx++)
+      {
+        txMsg.data[idx] = txPacket->data[idx];
+      }
+      /* Set the packet length. */
+      txMsg.len = txPacket->len;
+      /* Set the CAN message identifier. */
+      txMsg.id = xcpCanTxMsgID;
+      txMsg.ext = TBX_FALSE;
+      /* Attempt to transmit the packet via CAN. */
+      if (CanTransmit(&txMsg) == TBX_OK)
+      {
+        /* Update the result to indicate the packet was transmitted. */
+        result = TBX_OK;
+      }
+    }
   }
 
   /* Give the result back to the caller. */
@@ -389,6 +414,8 @@ static uint8_t AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket)
 static uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
 {
   uint8_t result = TBX_FALSE;
+  tCanMsg rxMsg;
+  uint8_t idx;
 
   /* Verify parameter. */
   TBX_ASSERT(rxPacket != NULL);
@@ -396,12 +423,27 @@ static uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
   /* Only continue with valid parameter. */
   if (rxPacket != NULL)
   {
-    /* TODO ##Vg Implement AppPortXcpReceivePacket(). Basically just see if a CAN message
-     * with the 0x7E1 ID was received. To be correct also check that the received len
-     * is not less than that of the rxPacket one. Will never be a problem on CAN, but
-     * just to set the right example. Keep in mind that a critical section is needed
-     * for reading the CAN message.
+    /* Check if an XCP CAN message was received. The reception should be non-blocking.
+     * Therefore a timeout of 0 ticks was specified.
      */
+    if (xQueueReceive(appXcpCanRxMsgQueue, &rxMsg, 0U) == pdPASS)
+    {
+      /* Store the XCP CAN message in the rxPacket if its length does not exceed that
+       * of an XCP packet.
+       */
+      if (rxMsg.len <= PORT_XCP_PACKET_SIZE_MAX)
+      {
+        /* Copy the data bytes. */
+        for (idx = 0U; idx < rxMsg.len; idx++)
+        {
+          rxPacket->data[idx] = rxMsg.data[idx];
+        }
+        /* Set the packet length. */
+        rxPacket->len = rxMsg.len;
+        /* Update the result to indicate the a packet was received. */
+        result = TBX_TRUE;
+      }
+    }
   }
 
   /* Give the result back to the caller. */
@@ -418,13 +460,25 @@ static uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
 ****************************************************************************************/
 static void AppCanMessageReceived(tCanMsg const * msg)
 {
+  uint32_t   const xcpCanRxMsgID = 0x7E1U;
+  BaseType_t       higherPriorityTaskWoken = pdFALSE;
+
   /* Verify parameter. */
   TBX_ASSERT(msg != NULL);
 
   /* Only continue with valid parameter. */
   if (msg != NULL)
   {
-    /* TODO ##Vg Implement AppCanMessageReceived(). */
+    /* Is this an XCP CAN message from a node running the OpenBLT bootloader? */
+    if ( (msg->id == xcpCanRxMsgID) && (msg->ext == TBX_FALSE) )
+    {
+      /* Add the message to the queue for later processing. Nothing we can do if the
+       * queue is full, so ignore the result.
+       */
+      (void)xQueueSendFromISR(appXcpCanRxMsgQueue, msg, &higherPriorityTaskWoken);
+      /* Perform context switch, if one is now pending. */
+      portYIELD_FROM_ISR(higherPriorityTaskWoken);
+    }
   }
 } /*** end of AppCanMessageReceived ***/
 

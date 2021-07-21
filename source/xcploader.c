@@ -142,7 +142,18 @@ static uint8_t XcpLoaderStart(void)
 {
   uint8_t result = TBX_ERROR;
 
-  /* TODO ##Vg Implement XcpLoaderStart(). */
+  /* TODO ##Vg Implement XcpLoaderStart(). For now I just hardcoded an XCP Connect
+   * command exchange for packet exchange testing purposes.
+   */
+  tPortXcpPacket txPacket;
+  tPortXcpPacket rxPacket;
+  txPacket.data[0] = 0xFFU;
+  txPacket.data[1] = 0U;
+  txPacket.len = 2U;
+  if (XcpExchangePacket(&txPacket, &rxPacket, xcpSettings.timeoutT1) == TBX_OK)
+  {
+    result = TBX_OK;
+  }
 
   /* Give the result back to the caller. */
   return result;
@@ -250,7 +261,8 @@ static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data)
 
 /************************************************************************************//**
 ** \brief     Transmits an XCP packet on the transport layer and attempts to receive the
-**            response packet within the specified timeout.
+**            response packet within the specified timeout. Note that this function is
+**            blocking.
 ** \param     txPacket Pointer to the packet to transmit.
 ** \param     rxPacket Pointer where the received packet info is stored.
 ** \param     timeout Maximum time in milliseconds to wait for the reception of the
@@ -262,19 +274,84 @@ static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data)
 static uint8_t XcpExchangePacket(tPortXcpPacket const * txPacket,
                                  tPortXcpPacket * rxPacket, uint16_t timeout)
 {
-  uint8_t result = TBX_ERROR;
-
-  TBX_UNUSED_ARG(timeout);
+  uint8_t  result = TBX_ERROR;
+  uint8_t  portFcnsValid = TBX_FALSE;
+  uint32_t startTime;
+  uint32_t deltaTime;
+  uint8_t  stopReception = TBX_FALSE;
 
   /* Check parameters. */
   TBX_ASSERT((txPacket != NULL) && (rxPacket != NULL) && (timeout > 0U));
 
-  /* Only continue if the parameters are valid. */
-  if ((txPacket != NULL) && (rxPacket != NULL) && (timeout > 0U))
+  /* A few port specific function will be used. Make sure they are valid before calling
+   * them.
+   */
+  if (PortGet() != NULL)
   {
-    /* TODO ##Vg Implement XcpExchangePacket(). Note that for accessing the port
-     * specifics, you can use something like: PortGet()->SystemGetTime();
+    /* Assume the port functions are okay and only flag an error when one is not okay.
+     * Note that when combining these conditionals, the MISRA check complains about
+     * side effects, so do them individually.
      */
+    portFcnsValid = TBX_TRUE;
+    if (PortGet()->SystemGetTime == NULL)     { portFcnsValid = TBX_FALSE; }
+    if (PortGet()->XcpTransmitPacket == NULL) { portFcnsValid = TBX_FALSE; }
+    if (PortGet()->XcpReceivePacket == NULL)  { portFcnsValid = TBX_FALSE; }
+  }
+  TBX_ASSERT(portFcnsValid == TBX_TRUE);
+
+  /* Only continue if the parameters and the port functions are valid. */
+  if ( (txPacket != NULL) && (rxPacket != NULL) && (timeout > 0U) &&
+       (portFcnsValid == TBX_TRUE) )
+  {
+    /* Set the result to success at this point and only update it upon error. */
+    result = TBX_OK;
+
+    /* Request the port to transmit the XCP packet using the application's implemented
+     * transport layer.
+     */
+    if (PortGet()->XcpTransmitPacket(txPacket) != TBX_OK)
+    {
+      /* Flag error. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if all is okay so far. */
+    if (result == TBX_OK)
+    {
+      /* Store the start time of the response reception. */
+      startTime = PortGet()->SystemGetTime();
+
+      /* Attempt to receive the XCP response packet within the timeout in a blocking
+       * manner.
+       */
+      while (stopReception == TBX_FALSE)
+      {
+        /* Check if a new XCP reponse package was received. */
+        if (PortGet()->XcpReceivePacket(rxPacket) == TBX_TRUE)
+        {
+          /* Response complete, so stop looping. */
+          stopReception = TBX_TRUE;
+        }
+        /* Check if the timeout time elapsed before continuing with the XCP packet
+         * reception.
+         */
+        else
+        {
+          /* Calculate elapsed time while waiting for the XCP response packet. Note that
+           * this calculation is 32-bit time overflow safe.
+           */
+          deltaTime = PortGet()->SystemGetTime() - startTime;
+          if (deltaTime > timeout)
+          {
+            /* Reception timeout occurred. Update the result to reflect this and stop
+             * looping.
+             */
+            result = TBX_ERROR;
+            stopReception = TBX_TRUE;
+          }
+        }
+      }
+    }
   }
 
   /* Give the result back to the caller. */

@@ -210,11 +210,15 @@ static void AppTask(void * pvParameters)
     /* Only continue with the firmware update if the firmware file could be opened. */
     if (updateResult == TBX_OK)
     {
-      /* TODO ##Vg Implement firmware update logic here. Perhaps implement the entire
+      /* TODO Implement firmware update logic here. Perhaps implement the entire
        * firmware update part in a seperate function. It is then easier to reuse
        * in another application.
        */
-      vTaskDelay(1000);
+      if (BltSessionStart() == TBX_OK)
+      {
+        vTaskDelay(1000);
+        BltSessionStop();
+      }
       /* Make sure to close the firmware file again. */
       BltFirmwareFileClose();
     }

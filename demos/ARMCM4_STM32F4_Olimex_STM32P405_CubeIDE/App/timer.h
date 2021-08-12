@@ -1,6 +1,6 @@
 /************************************************************************************//**
-* \file         time.h
-* \brief        Time driver header file.
+* \file         timer.h
+* \brief        Timer driver header file.
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -30,8 +30,8 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef TIME_H
-#define TIME_H
+#ifndef TIMER_H
+#define TIMER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,13 +40,13 @@ extern "C" {
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
-void     TimeInit(void);
-uint32_t TimeGet(void);
+void     TimerInit(void);
+uint32_t TimerGet(void);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TIME_H */
-/*********************************** end of time.h *************************************/
+#endif /* TIMER_H */
+/*********************************** end of timer.h ************************************/

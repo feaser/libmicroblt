@@ -43,7 +43,7 @@
 #include <string.h>                         /* C library string functions              */
 #include "app.h"                            /* Application header                      */
 #include "update.h"                         /* Firmware update module                  */
-#include "time.h"                           /* Time driver                             */
+#include "timer.h"                          /* Timer driver                            */
 #include "led.h"                            /* LED driver                              */
 #include "button.h"                         /* Push button driver                      */
 #include "can.h"                            /* CAN driver                              */
@@ -124,8 +124,8 @@ void AppInit(void)
   /* Register the application specific assertion handler. */
   TbxAssertSetHandler(AppAssertionHandler);
 
-  /* Initialize the time driver. */
-  TimeInit();
+  /* Initialize the timer driver. */
+  TimerInit();
   /* Initialize the LED driver. */
   LedInit();
   /* Initialize the push button driver. */
@@ -180,7 +180,15 @@ void AppInit(void)
 ****************************************************************************************/
 static uint8_t AppLocateFirmwareFile(char * firmwareFile)
 {
-  uint8_t result  = TBX_ERROR;
+  uint8_t         result = TBX_ERROR;
+  FRESULT         res;
+  FILINFO         fno;
+  DIR             dir;
+  char    const * trailerPos;
+  char    const * searchDir = "/";  /* Needs to end with a '/'. */
+  char    const * startsWith = "demoprog";
+  char    const * endsWith = ".srec";
+  uint8_t         continueLoop = TBX_TRUE;
 
   /* Verify parameter. */
   TBX_ASSERT(firmwareFile != NULL);
@@ -188,12 +196,55 @@ static uint8_t AppLocateFirmwareFile(char * firmwareFile)
   /* Only continue with valid parameter. */
   if (firmwareFile != NULL)
   {
-    /* Set a positive result and only negate upon error detection from here on. */
-    result = TBX_OK;
+    /* Open the directory, where firmware files are expected. */
+    if (f_opendir(&dir, searchDir) == FR_OK)
+    {
+      /* Go through all the files in the directory. */
+      while (continueLoop == TBX_TRUE)
+      {
+        /* Read an item from the directory. */
+        res = f_readdir(&dir, &fno);
+        /* Error reading item or end of directory. */
+        if ( (res != FR_OK) || (fno.fname[0] == 0U) )
+        {
+          /* Prepare to stop the loop. */
+          continueLoop = TBX_FALSE;
+          continue;
+        }
 
-    /* TODO Add logic that detects the filename. */
-    /* Copy the filename. */
-    strcpy(firmwareFile, "demoprog.srec");
+        /* Skip directories and dot entries. */
+        if ( ((fno.fattrib & AM_DIR) == AM_DIR) && (fno.fname[0] == '.') )
+        {
+          continue;
+        }
+
+        /* Valid file detected. See if it matches the pattern. First check if the start
+         * of the filename matches.
+         */
+        if (strncmp(fno.fname, startsWith, strlen(startsWith)) == 0U)
+        {
+          /* Next check if the end of filename the matches. First determine the position
+           * of the trailer.
+           */
+          if (strlen(fno.fname) > strlen(endsWith))
+          {
+            trailerPos = &fno.fname[strlen(fno.fname) - strlen(endsWith)];
+            /* Does the trailer match? */
+            if (strncmp(trailerPos, endsWith, strlen(endsWith)) == 0U)
+            {
+              /* Found a firmware file that matches the pattern. Copy it with its full
+               * path.
+               */
+              strcpy(firmwareFile, searchDir);
+              strcat(firmwareFile, fno.fname);
+              /* Update the result and set flag to stop the loop. */
+              result = TBX_OK;
+              continueLoop = TBX_FALSE;
+            }
+          }
+        }
+      }
+    }
   }
 
   /* Give the result back to the caller. */
@@ -368,7 +419,7 @@ static void AppButtonScanTask(void * pvParameters)
 static uint32_t AppPortSystemGetTime(void)
 {
   /* Obtain the current value of the millisecond timer. */
-  return TimeGet();
+  return TimerGet();
 } /*** end of AppPortSystemGetTime ***/
 
 

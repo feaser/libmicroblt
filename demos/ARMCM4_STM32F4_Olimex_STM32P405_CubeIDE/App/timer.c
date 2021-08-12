@@ -1,6 +1,6 @@
 /************************************************************************************//**
-* \file         time.c
-* \brief        Time driver source file.
+* \file         timer.c
+* \brief        Timer driver source file.
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -35,29 +35,29 @@
 * Include files
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX                                */
-#include "time.h"                           /* Time driver                             */
+#include "timer.h"                           /* Time driver                             */
 #include "stm32f4xx_hal.h"                  /* HAL drivers                             */
 
 
 /************************************************************************************//**
-** \brief     Initializes the time driver. The time base is typically provided by a
+** \brief     Initializes the timer driver. The time base is typically provided by a
 **            millisecond timer.
 **
 ****************************************************************************************/
-void TimeInit(void)
+void TimerInit(void)
 {
   /* Note that the timer initialization is already handled by HAL_Init(). */
-} /*** end of TimeInit ***/
+} /*** end of TimerInit ***/
 
 
 /************************************************************************************//**
 ** \brief     Obtains the current value of the millisecond timer.
 **
 ****************************************************************************************/
-uint32_t TimeGet(void)
+uint32_t TimerGet(void)
 {
   return HAL_GetTick();
-} /*** end of TimeGet ***/
+} /*** end of TimerGet ***/
 
 
-/*********************************** end of time.c *************************************/
+/*********************************** end of timer.c ************************************/

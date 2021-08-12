@@ -40,6 +40,7 @@
 #include <FreeRTOS.h>                       /* FreeRTOS                                */
 #include <task.h>                           /* FreeRTOS tasks                          */
 #include <event_groups.h>                   /* FreeRTOS event groups                   */
+#include <string.h>                         /* C library string functions              */
 #include "app.h"                            /* Application header                      */
 #include "update.h"                         /* Firmware update module                  */
 #include "time.h"                           /* Time driver                             */
@@ -73,6 +74,7 @@
 /****************************************************************************************
 * Function prototypes
 ****************************************************************************************/
+static uint8_t  AppLocateFirmwareFile(char * firmwareFile);
 static void     AppTask(void * pvParameters);
 static void     AppLedBlinkTask(void * pvParameters);
 static void     AppButtonScanTask(void * pvParameters);
@@ -134,7 +136,7 @@ void AppInit(void)
   BltPortInit(&portInterface);
 
   /* Mount the file system, using logical disk 0 */
-  f_mount(&fileSystem, "0:", 0);
+  f_mount(&fileSystem, "0:", 0U);
 
   /* Create the application events group. */
   appEvents = xEventGroupCreate();
@@ -143,7 +145,7 @@ void AppInit(void)
   /* Create the application task. */
   xTaskCreate(AppTask,
               "AppTask",
-              configMINIMAL_STACK_SIZE + 512,
+              configMINIMAL_STACK_SIZE + 512U,
               NULL,
               APP_TASK_PRIO,
               &appTaskHandle);
@@ -167,12 +169,47 @@ void AppInit(void)
 
 
 /************************************************************************************//**
+** \brief     Searches the root directory of the file system for a file, which fits the
+**            pattern of a firmware update file. All S-records of the demonstration user
+**            programs, included in the OpenBLT package, start with "demoprog" and end
+**            with ".srec".
+** \param     firmwareFile String to store the location of the firmware file on the file
+**            system.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t AppLocateFirmwareFile(char * firmwareFile)
+{
+  uint8_t result  = TBX_ERROR;
+
+  /* Verify parameter. */
+  TBX_ASSERT(firmwareFile != NULL);
+
+  /* Only continue with valid parameter. */
+  if (firmwareFile != NULL)
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* TODO Add logic that detects the filename. */
+    /* Copy the filename. */
+    strcpy(firmwareFile, "demoprog.srec");
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppLocateFirmwareFile ***/
+
+
+/************************************************************************************//**
 ** \brief     Task function of the application.
 ** \param     pvParameters Pointer to optional task parameters
 **
 ****************************************************************************************/
 static void AppTask(void * pvParameters)
 {
+  char firmwareFile[64];
+
   TBX_UNUSED_ARG(pvParameters);
 
   /* Enter infinite task loop. */
@@ -189,12 +226,12 @@ static void AppTask(void * pvParameters)
      */
     (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
 
-    /* TODO Add logic that detects the filename. Basically anything that starts with
-     * "demoprog" and ends with ".srec". Then specify the detected filename, instead
-     * of hardcoding "demoprog.srec".
-     */
-    /* Perform the firmware update. */
-    (void)UpdateFirmware("demoprog.srec", 0U);
+    /* Attempt to find the S-record to use for the firmware update on the file system. */
+    if (AppLocateFirmwareFile(firmwareFile) == TBX_OK)
+    {
+      /* Perform the firmware update. */
+      (void)UpdateFirmware(firmwareFile, 0U);
+    }
 
     /* Clear the event bits for the faster LED blink rate, just in case the event wasn't
      * yet processed. Otherwise the next set operation won´t go through.

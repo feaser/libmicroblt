@@ -129,10 +129,25 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
     /* Only continue when connected to the target. */
     if (result == TBX_OK)
     {
-      /* Erase the memory segments on the target that the firmwware data covers. */
+      /* Erase the memory segments on the target that the firmware data covers. */
       for (segmentIdx = 0U; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
       {
-        /* TODO Erase the memory segment. */
+        /* TODO Erase the memory segments. Note that XcpLoaderClearMemory() is
+         * implemented but not yet tested.
+         */
+      }
+    }
+
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Program memory segments ------------------------------------ */
+    /* ------------------------------------------------------------------------------- */
+    /* Only continue when connected to the target. */
+    if (result == TBX_OK)
+    {
+      /* Program the memory segments on the target one segment at a time. */
+      for (segmentIdx = 0U; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
+      {
+        /* TODO Program the memory segments. */
       }
     }
 

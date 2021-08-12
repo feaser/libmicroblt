@@ -1,6 +1,6 @@
 /************************************************************************************//**
-* \file         time.c
-* \brief        Time driver source file.
+* \file         update.h
+* \brief        Firmware update module header file.
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -30,34 +30,22 @@
 *
 * \endinternal
 ****************************************************************************************/
+#ifndef UPDATE_H
+#define UPDATE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /****************************************************************************************
-* Include files
+* Function prototypes
 ****************************************************************************************/
-#include <microtbx.h>                       /* MicroTBX                                */
-#include "time.h"                           /* Time driver                             */
-#include "stm32f4xx_hal.h"                  /* HAL drivers                             */
+uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId);
 
 
-/************************************************************************************//**
-** \brief     Initializes the time driver. The time base is typically provided by a
-**            millisecond timer.
-**
-****************************************************************************************/
-void TimeInit(void)
-{
-  /* Note that the timer initialization is already handled by HAL_Init(). */
-} /*** end of TimeInit ***/
+#ifdef __cplusplus
+}
+#endif
 
-
-/************************************************************************************//**
-** \brief     Obtains the current value of the millisecond timer.
-**
-****************************************************************************************/
-uint32_t TimeGet(void)
-{
-  return HAL_GetTick();
-} /*** end of TimeGet ***/
-
-
-/*********************************** end of time.c *************************************/
+#endif /* UPDATE_H */
+/*********************************** end of update.h ***********************************/

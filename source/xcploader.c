@@ -48,7 +48,9 @@
 /* XCP command codes as defined by the protocol currently supported by this module. */
 #define XCPLOADER_CMD_CONNECT         (0xFFU)    /**< XCP connect command code.        */
 #define XCPLOADER_CMD_GET_STATUS      (0xFDU)    /**< XCP get status command code.     */
+#define XCPLOADER_CMD_SET_MTA         (0xF6U)    /**< XCP set mta command code.        */
 #define XCPLOADER_CMD_PROGRAM_START   (0xD2U)    /**< XCP program start command code.  */
+#define XCPLOADER_CMD_PROGRAM_CLEAR   (0xD1U)    /**< XCP program clear command code.  */
 #define XCPLOADER_CMD_PROGRAM_RESET   (0xCFU)    /**< XCP program reset command code.  */
 #define XCPLOADER_CMD_PROGRAM         (0xD0U)    /**< XCP program command code.        */
 
@@ -90,22 +92,27 @@ static uint16_t           xcpMaxDto;
 * Function prototypes
 ****************************************************************************************/
 /* Protocol functions for linking to the session module. */
-static void    XcpLoaderInit(void const * settings);
-static void    XcpLoaderTerminate(void);
-static uint8_t XcpLoaderStart(void);
-static void    XcpLoaderStop(void);
-static uint8_t XcpLoaderClearMemory(uint32_t address, uint32_t len);
-static uint8_t XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const * data);
-static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data);
+static void     XcpLoaderInit(void const * settings);
+static void     XcpLoaderTerminate(void);
+static uint8_t  XcpLoaderStart(void);
+static void     XcpLoaderStop(void);
+static uint8_t  XcpLoaderClearMemory(uint32_t address, uint32_t len);
+static uint8_t  XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const * data);
+static uint8_t  XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data);
 /* Port dependent functions for low level XCP communication packet exchange. */
-static uint8_t XcpExchangePacket(tPortXcpPacket const * txPacket,
-                                 tPortXcpPacket * rxPacket, uint16_t timeout);
+static uint8_t  XcpExchangePacket(tPortXcpPacket const * txPacket,
+                                  tPortXcpPacket * rxPacket, uint16_t timeout);
+/* General module specific utility functions. */
+static void     XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data);
+static uint16_t XcpLoaderGetOrderedWord(uint8_t const * data);
 /* XCP Command functions. */
-static uint8_t XcpLoaderSendCmdConnect(void);
-static uint8_t XcpLoaderSendCmdGetStatus(uint8_t * protectedResources);
-static uint8_t XcpLoaderSendCmdProgramStart(void);
-static uint8_t XcpLoaderSendCmdProgramReset(void);
-static uint8_t XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data);
+static uint8_t  XcpLoaderSendCmdConnect(void);
+static uint8_t  XcpLoaderSendCmdGetStatus(uint8_t * protectedResources);
+static uint8_t  XcpLoaderSendCmdProgramStart(void);
+static uint8_t  XcpLoaderSendCmdProgramReset(void);
+static uint8_t  XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data);
+static uint8_t  XcpLoaderSendCmdSetMta(uint32_t address);
+static uint8_t  XcpLoaderSendCmdProgramClear(uint32_t len);
 
 
 /***********************************************************************************//**
@@ -294,16 +301,32 @@ static uint8_t XcpLoaderClearMemory(uint32_t address, uint32_t len)
 {
   uint8_t result = TBX_ERROR;
 
-  TBX_UNUSED_ARG(address);
-
   /* Verify parameters. */
   TBX_ASSERT(len > 0U);
 
-  /* Only continue with valid parameter. */
-  if (len > 0U)
+  /* Only continue with valid parameter and when actually connected. */
+  if ( (len > 0U) && (xcpConnected == TBX_TRUE) )
   {
-    /* TODO Implement XcpLoaderClearMemory(). */
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* First set the MTA pointer. */
+    if (XcpLoaderSendCmdSetMta(address) != TBX_OK)
+    {
+      /* Flag the error. */
+      result = TBX_ERROR;
+    }
+    /* Now perform the erase operation. */
+    if (result == TBX_OK)
+    {
+      /* Flag the error. */
+      if (XcpLoaderSendCmdProgramClear(len) != TBX_OK)
+      {
+        result = TBX_ERROR;
+      }
+    }
   }
+
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpLoaderClearMemory ***/
@@ -466,6 +489,73 @@ static uint8_t XcpExchangePacket(tPortXcpPacket const * txPacket,
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpExchangePacket ***/
+
+
+/************************************************************************************//**
+** \brief     Stores a 32-bit value into a byte buffer taking into account Intel
+**            or Motorola byte ordering.
+** \param     value The 32-bit value to store in the buffer.
+** \param     data Array to the buffer for storage.
+**
+****************************************************************************************/
+static void XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data)
+{
+  /* Verify parameter. */
+  TBX_ASSERT(data != NULL);
+
+  /* Only continue with valid parameter. */
+  if (data != NULL)
+  {
+    if (xcpSlaveIsIntel == TBX_TRUE)
+    {
+      data[3] = (uint8_t)(value >> 24U);
+      data[2] = (uint8_t)(value >> 16U);
+      data[1] = (uint8_t)(value >>  8U);
+      data[0] = (uint8_t)value;
+    }
+    else
+    {
+      data[0] = (uint8_t)(value >> 24U);
+      data[1] = (uint8_t)(value >> 16U);
+      data[2] = (uint8_t)(value >>  8U);
+      data[3] = (uint8_t)value;
+    }
+  }
+} /*** end of XcpLoaderSetOrderedLong ***/
+
+
+/************************************************************************************//**
+** \brief     Obtains a 16-bit value from a byte buffer taking into account Intel
+**            or Motorola byte ordering.
+** \param     data Array to the buffer with the word value stored as bytes.
+** \return    The 16-bit value.
+**
+****************************************************************************************/
+static uint16_t XcpLoaderGetOrderedWord(uint8_t const * data)
+{
+  uint16_t result = 0U;
+
+  /* Verify parameter. */
+  TBX_ASSERT(data != NULL);
+
+  /* Only continue with valid parameter. */
+  if (data != NULL)
+  {
+    if (xcpSlaveIsIntel == TBX_TRUE)
+    {
+      result |= (uint16_t)data[0];
+      result |= (uint16_t)((uint16_t)data[1] << 8U);
+    }
+    else
+    {
+      result |= (uint16_t)data[1];
+      result |= (uint16_t)((uint16_t)data[0] << 8U);
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderGetOrderedWord ***/
 
 
 /************************************************************************************//**
@@ -754,6 +844,94 @@ static uint8_t XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data)
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpLoaderSendCmdProgram ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP Set MTA command.
+** \param     address New MTA address for the slave.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdSetMta(uint32_t address)
+{
+  uint8_t        result = TBX_OK;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+
+  /* Prepare the command packet. */
+  reqPacket.data[0] = XCPLOADER_CMD_SET_MTA;
+  reqPacket.data[1] = 0U; /* Reserved. */
+  reqPacket.data[2] = 0U; /* Reserved. */
+  reqPacket.data[3] = 0U; /* Address extension not supported. */
+  /* Set the address taking into account byte ordering. */
+  XcpLoaderSetOrderedLong(address, &reqPacket.data[4]);
+  reqPacket.len = 8U;
+
+  /* Send the request packet and attempt to receive the response packet. */
+  if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT1) != TBX_OK)
+  {
+    /* Did not receive a response packet in time. Flag the error. */
+    result = TBX_ERROR;
+  }
+
+  /* Only continue if a response packet was received. */
+  if (result == TBX_OK)
+  {
+    /* Check if the response was valid. */
+    if ( (resPacket.len != 1U) || (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+    {
+      /* Not a valid or positive response. Flag the error. */
+      result = TBX_ERROR;
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderSendCmdSetMta ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP PROGRAM CLEAR command.
+** \param     len Number of elements to clear starting at the MTA address.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdProgramClear(uint32_t len)
+{
+  uint8_t        result = TBX_OK;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+
+  /* Prepare the command packet. */
+  reqPacket.data[0] = XCPLOADER_CMD_PROGRAM_CLEAR;
+  reqPacket.data[1] = 0U; /* Use absolute mode. */
+  reqPacket.data[2] = 0U; /* Reserved. */
+  reqPacket.data[3] = 0U; /* Reserved. */
+  /* Set the erase length taking into account byte ordering. */
+  XcpLoaderSetOrderedLong(len, &reqPacket.data[4]);
+  reqPacket.len = 8U;
+
+  /* Send the request packet and attempt to receive the response packet. */
+  if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT4) != TBX_OK)
+  {
+    /* Did not receive a response packet in time. Flag the error. */
+    result = TBX_ERROR;
+  }
+
+  /* Only continue if a response packet was received. */
+  if (result == TBX_OK)
+  {
+    /* Check if the response was valid. */
+    if ( (resPacket.len != 1U) || (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+    {
+      /* Not a valid or positive response. Flag the error. */
+      result = TBX_ERROR;
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderSendCmdProgramClear ***/
 
 
 /*********************************** end of xcploader.c ********************************/

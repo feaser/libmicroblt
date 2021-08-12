@@ -35,12 +35,13 @@
 * Include files
 ****************************************************************************************/
 #include <microtbx.h>                       /* MicroTBX                                */
+#include <microblt.h>                       /* LibMicroBLT                             */
 #include <ff.h>                             /* FatFS                                   */
 #include <FreeRTOS.h>                       /* FreeRTOS                                */
 #include <task.h>                           /* FreeRTOS tasks                          */
 #include <event_groups.h>                   /* FreeRTOS event groups                   */
-#include <microblt.h>                       /* LibMicroBLT                             */
 #include "app.h"                            /* Application header                      */
+#include "update.h"                         /* Firmware update module                  */
 #include "time.h"                           /* Time driver                             */
 #include "led.h"                            /* LED driver                              */
 #include "button.h"                         /* Push button driver                      */
@@ -51,13 +52,13 @@
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO                  ((UBaseType_t)8U)
+#define APP_TASK_PRIO                  ((UBaseType_t)6U)
 
 /** \brief Priority of the LED blink task. */
-#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)6U)
+#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)8U)
 
 /** \brief Priority of the push button scan task. */
-#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)6U)
+#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)8U)
 
 /** \brief Event flag bit to request the default LED blink rate. */
 #define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
@@ -111,17 +112,6 @@ static FATFS fileSystem = { 0 };
 ****************************************************************************************/
 void AppInit(void)
 {
-  tBltSessionSettingsXcpV10 const sessionSettings =
-  {
-    .timeoutT1   = 1000U,
-    .timeoutT3   = 2000U,
-    .timeoutT4   = 10000U,
-    .timeoutT5   = 1000U,
-    .timeoutT6   = 50U,
-    .timeoutT7   = 2000U,
-    .connectMode = 0U
-  };
-
   tPort const portInterface =
   {
     .SystemGetTime = AppPortSystemGetTime,
@@ -140,15 +130,11 @@ void AppInit(void)
   ButtonInit();
   /* Initialize the CAN driver. */
   CanInit(CAN_BAUDRATE_500K, AppCanMessageReceived);
+  /* Initialize the port module for linking the hardware dependent parts. */
+  BltPortInit(&portInterface);
 
   /* Mount the file system, using logical disk 0 */
   f_mount(&fileSystem, "0:", 0);
-  /* Initialize the port module for linking the hardware dependent parts. */
-  BltPortInit(&portInterface);
-  /* Initialize the firmware module for reading S-record firmware files. */
-  BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
-  /* Initialize the session module for firmware updates using the XCP protocol. */
-  BltSessionInit(BLT_SESSION_XCP_V10, &sessionSettings);
 
   /* Create the application events group. */
   appEvents = xEventGroupCreate();
@@ -187,8 +173,6 @@ void AppInit(void)
 ****************************************************************************************/
 static void AppTask(void * pvParameters)
 {
-  uint8_t updateResult = TBX_OK;
-
   TBX_UNUSED_ARG(pvParameters);
 
   /* Enter infinite task loop. */
@@ -205,24 +189,16 @@ static void AppTask(void * pvParameters)
      */
     (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
 
-    /* Start the firmware update by opening the firmware file. */
-    updateResult = BltFirmwareFileOpen("demoprog.srec");
-    /* Only continue with the firmware update if the firmware file could be opened. */
-    if (updateResult == TBX_OK)
-    {
-      /* TODO Implement firmware update logic here. Perhaps implement the entire
-       * firmware update part in a seperate function. It is then easier to reuse
-       * in another application.
-       */
-      if (BltSessionStart() == TBX_OK)
-      {
-        vTaskDelay(1000);
-        BltSessionStop();
-      }
-      /* Make sure to close the firmware file again. */
-      BltFirmwareFileClose();
-    }
+    /* TODO Add logic that detects the filename. Basically anything that starts with
+     * "demoprog" and ends with ".srec". Then specify the detected filename, instead
+     * of hardcoding "demoprog.srec".
+     */
+    /* Perform the firmware update. */
+    (void)UpdateFirmware("demoprog.srec", 0U);
 
+    /* FIXME LEDs keep blinking fast for some reason. Maybe because UpdateFirmware is
+     * still short at this point. But should be fixed.
+     */
     /* Trigger event to request the default LED blink rate to indicate that the firmware
      * update is no longer active.
      */

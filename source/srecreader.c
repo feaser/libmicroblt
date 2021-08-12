@@ -169,16 +169,10 @@ tFirmwareReader const * SRecReaderGet(void)
 ****************************************************************************************/
 static void SRecReaderInit(void)
 {
-  uint8_t memPoolStatus;
-
   /* Initialize the s-record handle members. */
   srecHandle.fileOpened = TBX_FALSE;
   srecHandle.segmentList = NULL;
   srecHandle.openedSegment = NULL;
-  /* Create a memory pool for segment info, with an initial size of 1. */
-  memPoolStatus = TbxMemPoolCreate(1, sizeof(tSRecSegment));
-  /* Make sure the memory pool could be created. If not, increase TBX_CONF_HEAP_SIZE. */
-  TBX_ASSERT(memPoolStatus == TBX_OK);
 } /*** end of SRecReaderInit ***/
 
 
@@ -329,7 +323,7 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
             {
               /* Attempt to allocate memory to store the new segment. */
               segment = TbxMemPoolAllocate(sizeof(tSRecSegment));
-              /* Automatically increase the memory pool if it was too small. */
+              /* Automatically create or increase the memory pool if it was too small. */
               if (segment == NULL)
               {
                 /* No need to check the return value, because we'll attempt to allocate

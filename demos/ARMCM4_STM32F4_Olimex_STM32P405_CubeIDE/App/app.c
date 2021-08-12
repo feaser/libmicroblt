@@ -52,13 +52,13 @@
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO                  ((UBaseType_t)6U)
+#define APP_TASK_PRIO                  ((UBaseType_t)8U)
 
 /** \brief Priority of the LED blink task. */
-#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)8U)
+#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)6U)
 
 /** \brief Priority of the push button scan task. */
-#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)8U)
+#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)6U)
 
 /** \brief Event flag bit to request the default LED blink rate. */
 #define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
@@ -196,15 +196,16 @@ static void AppTask(void * pvParameters)
     /* Perform the firmware update. */
     (void)UpdateFirmware("demoprog.srec", 0U);
 
-    /* FIXME LEDs keep blinking fast for some reason. Maybe because UpdateFirmware is
-     * still short at this point. But should be fixed.
+    /* Clear the event bits for the faster LED blink rate, just in case the event wasn't
+     * yet processed. Otherwise the next set operation won´t go through.
      */
+    (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
     /* Trigger event to request the default LED blink rate to indicate that the firmware
      * update is no longer active.
      */
     (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
 
-    /* Clear the push button pressed event, now that the firmwrae update completed. */
+    /* Clear the push button pressed event, now that the firmware update completed. */
     (void)xEventGroupClearBits(appEvents, APP_EVENT_BUTTON_PRESSED);
   }
 } /*** end of AppTask ***/

@@ -52,13 +52,13 @@
 * Macro definitions
 ****************************************************************************************/
 /** \brief Priority of the application task. */
-#define APP_TASK_PRIO                  ((UBaseType_t)8U)
+#define APP_TASK_PRIO                  ((UBaseType_t)6U)
 
 /** \brief Priority of the LED blink task. */
-#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)6U)
+#define APP_LED_BLINK_TASK_PRIO        ((UBaseType_t)8U)
 
 /** \brief Priority of the push button scan task. */
-#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)6U)
+#define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)8U)
 
 /** \brief Event flag bit to request the default LED blink rate. */
 #define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
@@ -218,8 +218,8 @@ static void AppTask(void * pvParameters)
 ****************************************************************************************/
 static void AppLedBlinkTask(void * pvParameters)
 {
-  const TickType_t ledNormalToggleTicks = 500U / portTICK_PERIOD_MS;
-  const TickType_t ledFastToggleTicks   = 100U / portTICK_PERIOD_MS;
+  TickType_t const ledNormalToggleTicks = 500U / portTICK_PERIOD_MS;
+  TickType_t const ledFastToggleTicks   = 100U / portTICK_PERIOD_MS;
   TickType_t       ledToggleTicks = ledNormalToggleTicks;
   EventBits_t      eventBits;
 

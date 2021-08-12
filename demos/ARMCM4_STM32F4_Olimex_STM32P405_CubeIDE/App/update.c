@@ -50,9 +50,13 @@
 ****************************************************************************************/
 uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
 {
-  uint8_t                         result = TBX_ERROR;
-  uint32_t                        segmentIdx;
-  tBltSessionSettingsXcpV10 const sessionSettings =
+  uint8_t                            result = TBX_ERROR;
+  uint32_t                           segmentIdx;
+  uint32_t                  const    connectTimeout = 5000U;
+  uint32_t                           connectStartTime;
+  uint32_t                           connectDeltaTime;
+  uint32_t                        (* portSystemGetTimeFcn)(void);
+  tBltSessionSettingsXcpV10 const    sessionSettings =
   {
     .timeoutT1   = 1000U,
     .timeoutT3   = 2000U,
@@ -63,20 +67,29 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
     .connectMode = nodeId
   };
 
-  /* Verify parameter. */
-  TBX_ASSERT(firmwareFile != NULL);
+  /* Attempt to set function pointer to the port's SystemGetTime() function. */
+  if (PortGet() != NULL)
+  {
+    portSystemGetTimeFcn = PortGet()->SystemGetTime;
+  }
+
+  /* Verify parameter and port function. */
+  TBX_ASSERT((firmwareFile != NULL) && (portSystemGetTimeFcn != NULL));
 
   /* Initialize the firmware module for reading S-record firmware files. */
   BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
   /* Initialize the session module for firmware updates using the XCP protocol. */
   BltSessionInit(BLT_SESSION_XCP_V10, &sessionSettings);
 
-  /* Only continue with valid parameter. */
-  if (firmwareFile != NULL)
+  /* Only continue with valid parameter and port function. */
+  if ( (firmwareFile != NULL) && (portSystemGetTimeFcn != NULL) )
   {
     /* Set a positive result and only negate upon error detection from here on. */
     result = TBX_OK;
 
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Open the firmware file ------------------------------------- */
+    /* ------------------------------------------------------------------------------- */
     /* Start the firmware update by opening the firmware file. */
     if (BltFirmwareFileOpen(firmwareFile) != TBX_OK)
     {
@@ -84,18 +97,35 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
       result = TBX_ERROR;
     }
 
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Connect to the target -------------------------------------- */
+    /* ------------------------------------------------------------------------------- */
     /* Only continue with an opened firmware file. */
     if (result == TBX_OK)
     {
-      /* TODO Maybe add a timeout feature here or do it indefinitely. */
-      /* Connect to the target. */
-      if (BltSessionStart() != TBX_OK)
+      /* Store time at which the connection attempt with the target started. */
+      connectStartTime = portSystemGetTimeFcn();
+      /* Attempt to connect to the target. */
+      while (BltSessionStart() != TBX_OK)
       {
-        /* Could not connect to the target. Flag error. */
-        result = TBX_ERROR;
+        /* Calculate elapsed time while waiting for the connection to establish. Note
+         * that this calculation is 32-bit time overflow safe.
+         */
+        connectDeltaTime = portSystemGetTimeFcn() - connectStartTime;
+        /* Did a timeout occur? */
+        if (connectDeltaTime > connectTimeout)
+        {
+          /* Could not connect to the target. Flag error. */
+          result = TBX_ERROR;
+          /* Stop connection attempts. */
+          break;
+        }
       }
     }
 
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Erase memory segments -------------------------------------- */
+    /* ------------------------------------------------------------------------------- */
     /* Only continue when connected to the target. */
     if (result == TBX_OK)
     {
@@ -106,10 +136,17 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
       }
     }
 
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Disconnect from the target --------------------------------- */
+    /* ------------------------------------------------------------------------------- */
     /* Make sure to stop the session again. This causes the bootloader on the target to
      * start the firmware, if present.
      */
     BltSessionStop();
+
+    /* ------------------------------------------------------------------------------- */
+    /* ------------------ Close the firmware file ------------------------------------ */
+    /* ------------------------------------------------------------------------------- */
     /* Make sure to close the firmware file again. */
     BltFirmwareFileClose();
   }

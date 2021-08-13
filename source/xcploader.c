@@ -952,7 +952,7 @@ static uint8_t XcpLoaderSendCmdProgramMax(uint8_t const * data)
     /* Copy the date bytes to program. */
     for (cnt = 0U; cnt < (xcpMaxProgCto-1U); cnt++)
     {
-      reqPacket.data[cnt+2U] = data[cnt];
+      reqPacket.data[cnt+1U] = data[cnt];
     }
     /* Note that the uin8_t typecast is okay, because a compile time plausibility check
      * is performed on macro PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in

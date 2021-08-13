@@ -52,7 +52,7 @@ extern "C" {
 ****************************************************************************************/
 /** \brief Total number of bytes in a XCP data packet. It should be at least equal or
  *         larger than that configured on the microcontroller, which runs the OpenBLT
- *         bootloader.
+ *         bootloader. In any case, it cannot be larger than 255.
  */
 #define PORT_XCP_PACKET_SIZE_MAX   (255U)
 

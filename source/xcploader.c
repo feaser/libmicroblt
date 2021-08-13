@@ -46,13 +46,15 @@
 * Macro definitions
 ****************************************************************************************/
 /* XCP command codes as defined by the protocol currently supported by this module. */
-#define XCPLOADER_CMD_CONNECT         (0xFFU)    /**< XCP connect command code.        */
-#define XCPLOADER_CMD_GET_STATUS      (0xFDU)    /**< XCP get status command code.     */
-#define XCPLOADER_CMD_SET_MTA         (0xF6U)    /**< XCP set mta command code.        */
-#define XCPLOADER_CMD_PROGRAM_START   (0xD2U)    /**< XCP program start command code.  */
-#define XCPLOADER_CMD_PROGRAM_CLEAR   (0xD1U)    /**< XCP program clear command code.  */
+#define XCPLOADER_CMD_PROGRAM_MAX     (0xC9u)    /**< XCP program max command code.    */
 #define XCPLOADER_CMD_PROGRAM_RESET   (0xCFU)    /**< XCP program reset command code.  */
 #define XCPLOADER_CMD_PROGRAM         (0xD0U)    /**< XCP program command code.        */
+#define XCPLOADER_CMD_PROGRAM_CLEAR   (0xD1U)    /**< XCP program clear command code.  */
+#define XCPLOADER_CMD_PROGRAM_START   (0xD2U)    /**< XCP program start command code.  */
+#define XCPLOADER_CMD_UPLOAD          (0xF5u)    /**< XCP upload command code.         */
+#define XCPLOADER_CMD_SET_MTA         (0xF6U)    /**< XCP set mta command code.        */
+#define XCPLOADER_CMD_GET_STATUS      (0xFDU)    /**< XCP get status command code.     */
+#define XCPLOADER_CMD_CONNECT         (0xFFU)    /**< XCP connect command code.        */
 
 /* XCP supported resources. */
 #define XCPLOADER_RESOURCE_PGM        (0x10U)    /**< ProGraMing resource.             */
@@ -104,15 +106,16 @@ static uint8_t  XcpExchangePacket(tPortXcpPacket const * txPacket,
                                   tPortXcpPacket * rxPacket, uint16_t timeout);
 /* General module specific utility functions. */
 static void     XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data);
-static uint16_t XcpLoaderGetOrderedWord(uint8_t const * data);
 /* XCP Command functions. */
 static uint8_t  XcpLoaderSendCmdConnect(void);
 static uint8_t  XcpLoaderSendCmdGetStatus(uint8_t * protectedResources);
 static uint8_t  XcpLoaderSendCmdProgramStart(void);
 static uint8_t  XcpLoaderSendCmdProgramReset(void);
 static uint8_t  XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data);
+static uint8_t  XcpLoaderSendCmdProgramMax(uint8_t const * data);
 static uint8_t  XcpLoaderSendCmdSetMta(uint32_t address);
 static uint8_t  XcpLoaderSendCmdProgramClear(uint32_t len);
+static uint8_t  XcpLoaderSendCmdUpload(uint8_t * data, uint8_t len);
 
 
 /***********************************************************************************//**
@@ -208,7 +211,7 @@ static uint8_t XcpLoaderStart(void)
   XcpLoaderStop();
 
   /* Attempt to connect to the target with a finite amount of retries. */
-  for (retryCnt=0U; retryCnt<XCPLOADER_CONNECT_RETRIES; retryCnt++)
+  for (retryCnt = 0U; retryCnt < XCPLOADER_CONNECT_RETRIES; retryCnt++)
   {
     /* Send the connect command. */
     if (XcpLoaderSendCmdConnect() == TBX_OK)
@@ -305,7 +308,7 @@ static uint8_t XcpLoaderClearMemory(uint32_t address, uint32_t len)
   TBX_ASSERT(len > 0U);
 
   /* Only continue with valid parameter and when actually connected. */
-  if ( (len > 0U) && (xcpConnected == TBX_TRUE) )
+  if ((len > 0U) && (xcpConnected == TBX_TRUE))
   {
     /* Set a positive result and only negate upon error detection from here on. */
     result = TBX_OK;
@@ -344,17 +347,77 @@ static uint8_t XcpLoaderClearMemory(uint32_t address, uint32_t len)
 ****************************************************************************************/
 static uint8_t XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const * data)
 {
-  uint8_t result = TBX_ERROR;
-
-  TBX_UNUSED_ARG(address);
+  uint8_t  result = TBX_ERROR;
+  uint8_t  currentWriteCnt;
+  uint32_t bufferOffset = 0U;
+  uint8_t  continueLoop = TBX_TRUE;
 
   /* Check parameters. */
   TBX_ASSERT((data != NULL) && ((len > 0U)));
 
-  /* Only continue if the parameters are valid. */
-  if ((data != NULL) && (len > 0U)) /*lint !e774 */
+  /* Only continue with valid parameters, when actually connected and xcpMaxProgCto has
+   * a valid length.
+   */
+  if ((data != NULL) && (len > 0U) && (xcpConnected == TBX_TRUE) &&
+      (xcpMaxProgCto <= PORT_XCP_PACKET_SIZE_MAX) )
   {
-    /* TODO Implement XcpLoaderWriteData(). */
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* First set the MTA pointer. */
+    if (XcpLoaderSendCmdSetMta(address) != TBX_OK)
+    {
+      /* Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Perform segmented programming of the data. */
+    if (result == TBX_OK)
+    {
+      /* Note that the uin8_t typecast on xcpMaxProgCto inside the loop is okay, because
+       * a compile time plausibility check is performed on macro
+       * PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in unsigned 8-bit.
+       */
+      while (continueLoop == TBX_TRUE)
+      {
+        /* Set the current write length to make optimal use of the available packet
+         * data.
+         */
+        currentWriteCnt = (uint8_t)(len % ((uint32_t)xcpMaxProgCto - 1U));
+        /* Is the current length a perfect fit for the PROGRAM_MAX command? */
+        if (currentWriteCnt == 0U)
+        {
+          currentWriteCnt = ((uint8_t)xcpMaxProgCto - 1U);
+          /* Program data use the PROGRAN_MAX command. */
+          if (XcpLoaderSendCmdProgramMax(&data[bufferOffset]) != TBX_OK)
+          {
+            /* Could not program the data. Flag error and request the loop to stop. */
+            result = TBX_ERROR;
+            continueLoop = TBX_FALSE;
+          }
+        }
+        /* Use the PROGRAM command instead. */
+        else
+        {
+          /* Program data use the PROGRAM command. */
+          if (XcpLoaderSendCmdProgram(currentWriteCnt, &data[bufferOffset]) != TBX_OK)
+          {
+            /* Could not program the data. Flag error and request the loop to stop. */
+            result = TBX_ERROR;
+            continueLoop = TBX_FALSE;
+          }
+        }
+
+        /* Update loop variables. */
+        len -= currentWriteCnt;
+        bufferOffset += currentWriteCnt;
+        /* Stop the loop when all bytes were programmed or an error was detected. */
+        if ( (len == 0U) || (result == TBX_ERROR) )
+        {
+          continueLoop = TBX_FALSE;
+        }
+      }
+    }
   }
   /* Give the result back to the caller. */
   return result;
@@ -373,18 +436,66 @@ static uint8_t XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const 
 ****************************************************************************************/
 static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data)
 {
-  uint8_t result = TBX_ERROR;
-
-  TBX_UNUSED_ARG(address);
+  uint8_t  result = TBX_ERROR;
+  uint8_t  currentReadCnt;
+  uint32_t bufferOffset = 0U;
+  uint8_t  continueLoop = TBX_TRUE;
 
   /* Check parameters. */
   TBX_ASSERT((data != NULL) && (len > 0U));
 
-  /* Only continue if the parameters are valid. */
-  if ((data != NULL) && (len > 0U)) /*lint !e774 */
+  /* Only continue with valid parameters, when actually connected and xcpMaxDto has a
+   * valid length.
+   */
+  if ((data != NULL) && (len > 0U) && (xcpConnected == TBX_TRUE) &&
+      (xcpMaxDto <= PORT_XCP_PACKET_SIZE_MAX))
   {
-    /* TODO Implement XcpLoaderReadData(). */
-    data[0] = 0U;
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* First set the MTA pointer. */
+    if (XcpLoaderSendCmdSetMta(address) != TBX_OK)
+    {
+      /* Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Perform segmented upload of the data. */
+    if (result == TBX_OK)
+    {
+      /* Note that the uin8_t typecast on xcpMaxDto inside the loop is okay, because
+       * a compile time plausibility check is performed on macro
+       * PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in unsigned 8-bit.
+       */
+      while (continueLoop == TBX_TRUE)
+      {
+        /* Set the current read length to make optimal use of the available packet
+         * data.
+         */
+        currentReadCnt = (uint8_t)(len % ((uint32_t)xcpMaxDto - 1U));
+        if (currentReadCnt == 0U)
+        {
+          currentReadCnt = ((uint8_t)xcpMaxDto - 1U);
+        }
+
+        /* Upload some data */
+        if (XcpLoaderSendCmdUpload(&data[bufferOffset], currentReadCnt) != TBX_OK)
+        {
+          /* Could not upload the data. Flag error and request the loop to stop. */
+          result = TBX_ERROR;
+          continueLoop = TBX_FALSE;
+        }
+
+        /* Update loop variables. */
+        len -= currentReadCnt;
+        bufferOffset += currentReadCnt;
+        /* Stop the loop when all bytes were uploaded or an error was detected. */
+        if ( (len == 0U) || (result == TBX_ERROR) )
+        {
+          continueLoop = TBX_FALSE;
+        }
+      }
+    }
   }
   /* Give the result back to the caller. */
   return result;
@@ -522,40 +633,6 @@ static void XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data)
     }
   }
 } /*** end of XcpLoaderSetOrderedLong ***/
-
-
-/************************************************************************************//**
-** \brief     Obtains a 16-bit value from a byte buffer taking into account Intel
-**            or Motorola byte ordering.
-** \param     data Array to the buffer with the word value stored as bytes.
-** \return    The 16-bit value.
-**
-****************************************************************************************/
-static uint16_t XcpLoaderGetOrderedWord(uint8_t const * data)
-{
-  uint16_t result = 0U;
-
-  /* Verify parameter. */
-  TBX_ASSERT(data != NULL);
-
-  /* Only continue with valid parameter. */
-  if (data != NULL)
-  {
-    if (xcpSlaveIsIntel == TBX_TRUE)
-    {
-      result |= (uint16_t)data[0];
-      result |= (uint16_t)((uint16_t)data[1] << 8U);
-    }
-    else
-    {
-      result |= (uint16_t)data[1];
-      result |= (uint16_t)((uint16_t)data[0] << 8U);
-    }
-  }
-
-  /* Give the result back to the caller. */
-  return result;
-} /*** end of XcpLoaderGetOrderedWord ***/
 
 
 /************************************************************************************//**
@@ -802,7 +879,9 @@ static uint8_t XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data)
     TBX_ASSERT(data != NULL);
   }
 
-  /* Only continue if this number of bytes actually fits in this command. */
+  /* Only continue if this number of bytes actually fits in this command and with a
+   * valid CTO length.
+   */
   if( (len <= (xcpMaxProgCto-2U)) && (xcpMaxProgCto <= PORT_XCP_PACKET_SIZE_MAX) )
   {
     /* Set a positive result and only negate upon error detection from here on. */
@@ -815,7 +894,7 @@ static uint8_t XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data)
     if (data != NULL)
     {
       /* Copy the date bytes to program. */
-      for (cnt=0U; cnt<len; cnt++)
+      for (cnt = 0U; cnt < len; cnt++)
       {
         reqPacket.data[cnt+2U] = data[cnt];
       }
@@ -844,6 +923,66 @@ static uint8_t XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data)
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpLoaderSendCmdProgram ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP PROGRAM MAX command.
+** \param     data Array with data bytes to program.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdProgramMax(uint8_t const * data)
+{
+  uint8_t        result = TBX_ERROR;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+  uint8_t        cnt;
+
+  /* Verify parameters. */
+  TBX_ASSERT(data != NULL);
+
+  /* Only continue with valid parameter and a valid CTO length. */
+  if ((xcpMaxProgCto <= PORT_XCP_PACKET_SIZE_MAX) && (data != NULL))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+    /* Prepare the command request packet. */
+    reqPacket.data[0] = XCPLOADER_CMD_PROGRAM_MAX;
+
+    /* Copy the date bytes to program. */
+    for (cnt = 0U; cnt < (xcpMaxProgCto-1U); cnt++)
+    {
+      reqPacket.data[cnt+2U] = data[cnt];
+    }
+    /* Note that the uin8_t typecast is okay, because a compile time plausibility check
+     * is performed on macro PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in
+     * unsigned 8-bit.
+     */
+    reqPacket.len = (uint8_t)xcpMaxProgCto;
+
+    /* Send the request packet and attempt to receive the response packet. */
+    if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT5) != TBX_OK)
+    {
+      /* Did not receive a response packet in time. Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if a response packet was received. */
+    if (result == TBX_OK)
+    {
+      /* Check if the response was valid. */
+      if ( (resPacket.len != 1U) || (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+      {
+        /* Not a valid or positive response. Flag the error. */
+        result = TBX_ERROR;
+      }
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+
+} /*** end of XcpLoaderSendCmdProgramMax ***/
 
 
 /************************************************************************************//**
@@ -932,6 +1071,68 @@ static uint8_t XcpLoaderSendCmdProgramClear(uint32_t len)
   /* Give the result back to the caller. */
   return result;
 } /*** end of XcpLoaderSendCmdProgramClear ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP UPLOAD command.
+** \param     data Destination data buffer.
+** \param     len Number of bytes to upload.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdUpload(uint8_t * data, uint8_t len)
+{
+  uint8_t        result = TBX_ERROR;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+  uint8_t        cnt;
+
+  /* Verify parameters. */
+  TBX_ASSERT((data != NULL) && (len > 0U));
+
+  /* Only continue with valid parameters and a valid DTO length. */
+  if ((data != NULL) && (len > 0U) && (len < xcpMaxDto))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* Prepare the command packet. */
+    reqPacket.data[0] = XCPLOADER_CMD_UPLOAD;
+    reqPacket.data[1] = len;
+    reqPacket.len = 2U;
+
+    /* Send the request packet and attempt to receive the response packet. */
+    if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT1) != TBX_OK)
+    {
+      /* Did not receive a response packet in time. Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if a response packet was received. */
+    if (result == TBX_OK)
+    {
+      /* Check if the response was valid. */
+      if ( (resPacket.len == 0U) || (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+      {
+        /* Not a valid or positive response. Flag the error. */
+        result = TBX_ERROR;
+      }
+    }
+
+    /* Only process the response data in case the response was valid. */
+    if (result == TBX_OK)
+    {
+      /* Store the uploaded data. */
+      for (cnt = 0U; cnt < len; cnt++)
+      {
+        data[cnt] = resPacket.data[cnt + 1U];
+      }
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderSendCmdUpload ***/
 
 
 /*********************************** end of xcploader.c ********************************/

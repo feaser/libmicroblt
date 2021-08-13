@@ -51,11 +51,13 @@
 uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
 {
   uint8_t                            result = TBX_ERROR;
-  uint32_t                           segmentIdx;
+  uint8_t                            segmentIdx;
+  uint32_t                           segmentLen;
+  uint32_t                           segmentBase;
   uint32_t                  const    connectTimeout = 5000U;
   uint32_t                           connectStartTime;
   uint32_t                           connectDeltaTime;
-  uint32_t                        (* portSystemGetTimeFcn)(void);
+  uint32_t                        (* portSystemGetTimeFcn)(void) = NULL;
   tBltSessionSettingsXcpV10 const    sessionSettings =
   {
     .timeoutT1   = 1000U,
@@ -132,9 +134,15 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
       /* Erase the memory segments on the target that the firmware data covers. */
       for (segmentIdx = 0U; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
       {
-        /* TODO Erase the memory segments. Note that XcpLoaderClearMemory() is
-         * implemented but not yet tested.
-         */
+        /* Obtain segment information such as its base memory adddress and length. */
+        segmentLen = BltFirmwareSegmentGetInfo(segmentIdx, &segmentBase);
+        /* Erase the segment. */
+        if (BltSessionClearMemory(segmentBase, segmentLen) == TBX_ERROR)
+        {
+          /* The the erase error and stop the loop. */
+          result = TBX_ERROR;
+          break;
+        }
       }
     }
 

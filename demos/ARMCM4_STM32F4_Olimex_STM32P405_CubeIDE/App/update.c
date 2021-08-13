@@ -54,9 +54,13 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
   uint8_t                            segmentIdx;
   uint32_t                           segmentLen;
   uint32_t                           segmentBase;
+  uint8_t                   const *  chunkData;
+  uint16_t                           chunkLen;
+  uint32_t                           chunkBase;
   uint32_t                  const    connectTimeout = 5000U;
   uint32_t                           connectStartTime;
   uint32_t                           connectDeltaTime;
+  uint8_t                            continueLoop;
   uint32_t                        (* portSystemGetTimeFcn)(void) = NULL;
   tBltSessionSettingsXcpV10 const    sessionSettings =
   {
@@ -155,7 +159,53 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
       /* Program the memory segments on the target one segment at a time. */
       for (segmentIdx = 0U; segmentIdx < BltFirmwareSegmentGetCount(); segmentIdx++)
       {
-        /* TODO Program the memory segments. */
+        /* Open the segment for reading. */
+        BltFirmwareSegmentOpen(segmentIdx);
+
+        /* Set flag to start the loop. */
+        continueLoop = TBX_TRUE;
+
+        /* Program the segment data, one chunk at a time. */
+        while (continueLoop == TBX_TRUE)
+        {
+          /* Attempt to read the next chunk of data in this segment. */
+          chunkData = BltFirmwareSegmentGetNextData(&chunkBase, &chunkLen);
+          /* Did an error occur? */
+          if (chunkData == NULL)
+          {
+            /* Could not read the data chunk. Flag error and request the loop to stop. */
+            result = TBX_ERROR;
+            continueLoop = TBX_FALSE;
+          }
+          /* No error occured. The segment end was reached or new data was read. */
+          else
+          {
+            /* Segment end reached? */
+            if (chunkLen == 0U)
+            {
+              /* All done with this segment so request the loop to stop. */
+              continueLoop = TBX_FALSE;
+            }
+            /* New data chunk was read. */
+            else
+            {
+              /* Program the newly read data chunk. */
+              if (BltSessionWriteData(chunkBase, chunkLen, chunkData) != TBX_OK)
+              {
+                /* Could not program the data. Flag error and request the loop to stop.*/
+                result = TBX_ERROR;
+                continueLoop = TBX_FALSE;
+              }
+            }
+          }
+        }
+
+        /* Check if an error occured while programming the segment's data chunks. */
+        if (result != TBX_OK)
+        {
+          /* Stop segment loop, because an error was detected. */
+          break;
+        }
       }
     }
 

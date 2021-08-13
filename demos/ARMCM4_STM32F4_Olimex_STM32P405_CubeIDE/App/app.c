@@ -61,14 +61,11 @@
 /** \brief Priority of the push button scan task. */
 #define APP_BUTTON_SCAN_TASK_PRIO      ((UBaseType_t)8U)
 
-/** \brief Event flag bit to request the default LED blink rate. */
-#define APP_EVENT_LED_NORMAL_BLINKING  ((uint8_t)0x01U)
-
 /** \brief Event flag bit to request a faster LED blink rate. */
-#define APP_EVENT_LED_FAST_BLINKING    ((uint8_t)0x02U)
+#define APP_EVENT_LED_FAST_BLINKING    ((uint8_t)0x01U)
 
 /** \brief Event flag bit for the push button pressed event. */
-#define APP_EVENT_BUTTON_PRESSED       ((uint8_t)0x04U)
+#define APP_EVENT_BUTTON_PRESSED       ((uint8_t)0x02U)
 
 
 /****************************************************************************************
@@ -284,14 +281,8 @@ static void AppTask(void * pvParameters)
       (void)UpdateFirmware(firmwareFile, 0U);
     }
 
-    /* Clear the event bits for the faster LED blink rate, just in case the event wasn't
-     * yet processed. Otherwise the next set operation won´t go through.
-     */
+    /* Clear the event bit for the faster LED blink rate. */
     (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
-    /* Trigger event to request the default LED blink rate to indicate that the firmware
-     * update is no longer active.
-     */
-    (void)xEventGroupSetBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
 
     /* Clear the push button pressed event, now that the firmware update completed. */
     (void)xEventGroupClearBits(appEvents, APP_EVENT_BUTTON_PRESSED);
@@ -318,21 +309,15 @@ static void AppLedBlinkTask(void * pvParameters)
   {
     /* Obtain the current state of the event bits. */
     eventBits = xEventGroupGetBits(appEvents);
-    /* Check if a different blink rate for the LED is requested. */
-    if ((eventBits & APP_EVENT_LED_NORMAL_BLINKING) != 0)
+    /* Configure normal blink rate by default. */
+    ledToggleTicks = ledNormalToggleTicks;
+    /* Determine if a fast blink rate is requested. */
+    if ((eventBits & APP_EVENT_LED_FAST_BLINKING) != 0)
     {
-      /* Update the LED blink rate. */
-      ledToggleTicks = ledNormalToggleTicks;
-      /* Clear the event bits after processing the event. */
-      (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_NORMAL_BLINKING);
-    }
-    else if ((eventBits & APP_EVENT_LED_FAST_BLINKING) != 0)
-    {
-      /* Update the LED blink rate. */
+      /* Configure fast flink rate. */
       ledToggleTicks = ledFastToggleTicks;
-      /* Clear the event bits after processing the event. */
-      (void)xEventGroupClearBits(appEvents, APP_EVENT_LED_FAST_BLINKING);
     }
+
     /* Toggle the LED at the currently requested interval. */
     vTaskDelay(ledToggleTicks);
     LedToggleState();

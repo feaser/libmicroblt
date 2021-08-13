@@ -153,7 +153,7 @@ uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
     /* ------------------------------------------------------------------------------- */
     /* ------------------ Program memory segments ------------------------------------ */
     /* ------------------------------------------------------------------------------- */
-    /* Only continue when connected to the target. */
+    /* Only continue when memory segments were successfully erased. */
     if (result == TBX_OK)
     {
       /* Program the memory segments on the target one segment at a time. */

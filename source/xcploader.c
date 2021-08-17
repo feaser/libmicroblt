@@ -108,6 +108,8 @@ static uint8_t  XcpExchangePacket(tPortXcpPacket const * txPacket,
                                   tPortXcpPacket * rxPacket, uint16_t timeout);
 /* General module specific utility functions. */
 static void     XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data);
+static uint8_t  XcpLoaderUploadSeed(uint8_t * seedPtr, uint8_t * seedLen);
+static uint8_t  XcpLoaderDownloadKeyAndUnlock(uint8_t const * keyPtr, uint8_t keyLen);
 /* XCP Command functions. */
 static uint8_t  XcpLoaderSendCmdConnect(void);
 static uint8_t  XcpLoaderSendCmdGetStatus(uint8_t * protectedResources);
@@ -210,60 +212,106 @@ static void XcpLoaderTerminate(void)
 static uint8_t XcpLoaderStart(void)
 {
   uint8_t result = TBX_ERROR;
+  uint8_t portFcnsValid = TBX_FALSE;
   uint8_t retryCnt;
   uint8_t protectedResources = 0U;
+  uint8_t seed[256] = { 0U };
+  uint8_t seedLen;
+  uint8_t key[256] = { 0U };
+  uint8_t keyLen = 0U;
 
-  /* Make sure the session is stopped before starting a new one. */
-  XcpLoaderStop();
-
-  /* Attempt to connect to the target with a finite amount of retries. */
-  for (retryCnt = 0U; retryCnt < XCPLOADER_CONNECT_RETRIES; retryCnt++)
+  /* A port specific function will be used. Make sure it is valid before calling. */
+  if (PortGet() != NULL)
   {
-    /* Send the connect command. */
-    if (XcpLoaderSendCmdConnect() == TBX_OK)
+    if (PortGet()->XcpComputeKeyFromSeed != NULL)
     {
-      /* Update connection state. */
-      xcpConnected = TBX_TRUE;
-      /* Set a positive result and only negate it upon error detection from here on. */
-      result = TBX_OK;
-      /* Connected so no need to retry. */
-      break;
+      portFcnsValid = TBX_TRUE;
     }
   }
+  TBX_ASSERT(portFcnsValid == TBX_TRUE);
 
-  /* Only continue when connected to the target. */
-  if (result == TBX_OK)
+  /* Only continue if port functions is valid. */
+  if (portFcnsValid == TBX_TRUE)
   {
-    /* Obtain the current resource protection status. */
-    if (XcpLoaderSendCmdGetStatus(&protectedResources) != TBX_OK)
+    /* Make sure the session is stopped before starting a new one. */
+    XcpLoaderStop();
+
+    /* Attempt to connect to the target with a finite amount of retries. */
+    for (retryCnt = 0U; retryCnt < XCPLOADER_CONNECT_RETRIES; retryCnt++)
     {
-      /* Could not obtain resource protection status. Flag error. */
-      result = TBX_ERROR;
+      /* Send the connect command. */
+      if (XcpLoaderSendCmdConnect() == TBX_OK)
+      {
+        /* Update connection state. */
+        xcpConnected = TBX_TRUE;
+        /* Set a positive result and only negate it upon error detection from here on. */
+        result = TBX_OK;
+        /* Connected so no need to retry. */
+        break;
+      }
     }
-  }
 
-  /* Only continue when resource protection status was obtained. */
-  if (result == TBX_OK)
-  {
-    /* Check if the programming resource needs to be unlocked. */
-    if ((protectedResources & XCPLOADER_RESOURCE_PGM) != 0U)
+    /* Only continue when connected to the target. */
+    if (result == TBX_OK)
     {
-      /* TODO Implement support for seed/key mechanism to unlock programming resource. */
-      /* Support for seed/key unlocking mechanism not yet implemented. Trigger error
-       * in case the programming resource is currently locked.
-       */
-      result = TBX_ERROR;
+      /* Obtain the current resource protection status. */
+      if (XcpLoaderSendCmdGetStatus(&protectedResources) != TBX_OK)
+      {
+        /* Could not obtain resource protection status. Flag error. */
+        result = TBX_ERROR;
+      }
     }
-  }
 
-  /* Only continue with an unlocked programming resource. */
-  if (result == TBX_OK)
-  {
-    /* Attempt to place the target in programming mode. */
-    if (XcpLoaderSendCmdProgramStart() != TBX_OK)
+    /* Only continue when resource protection status was obtained. */
+    if (result == TBX_OK)
     {
-      /* Could not activate programming mode. Flag error. */
-      result = TBX_ERROR;
+      /* Check if the programming resource needs to be unlocked. */
+      if ((protectedResources & XCPLOADER_RESOURCE_PGM) != 0U)
+      {
+        /* Upload the seed for unlocking the programming resource. */
+        if (XcpLoaderUploadSeed(seed, &seedLen) != TBX_OK)
+        {
+          /* Flag the error. */
+          result = TBX_ERROR;
+        }
+
+        /* Only continue after successfully uploading the seed. */
+        if (result == TBX_OK)
+        {
+          /* Calculate the key, based on the uploaded seed. */
+          if (PortGet()->XcpComputeKeyFromSeed(seedLen, seed, &keyLen, key) != TBX_OK)
+          {
+            /* Flag the error. */
+            result = TBX_ERROR;
+          }
+        }
+
+        /* Only continue after successfully calculating the key. */
+        if (result == TBX_OK)
+        {
+          /* Download the key and attempt to unlock the programming resource. */
+          if (XcpLoaderDownloadKeyAndUnlock(key, keyLen) != TBX_OK)
+          {
+            /* Target automatically disconnects upon giving an incorrect key. Update the
+             * connection state accordingly.
+             */
+            xcpConnected = TBX_FALSE;
+            /* Flag the error. */
+            result = TBX_ERROR;
+          }
+        }
+      }
+    }
+
+    /* Only continue with an unlocked programming resource. */
+    if (result == TBX_OK)
+    {
+      /* Attempt to place the target in programming mode. */
+      if (XcpLoaderSendCmdProgramStart() != TBX_OK)
+      {
+        /* Could not activate programming mode. Flag error. */
+        result = TBX_ERROR;
+      }
     }
   }
 
@@ -639,6 +687,144 @@ static void XcpLoaderSetOrderedLong(uint32_t value, uint8_t * data)
     }
   }
 } /*** end of XcpLoaderSetOrderedLong ***/
+
+
+/************************************************************************************//**
+** \brief     Uploads the seed from the target.
+** \param     seedPtr Byte array to store the bytes of the seed.
+** \param     seedLen Total number of bytes in the seed.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderUploadSeed(uint8_t * seedPtr, uint8_t * seedLen)
+{
+  uint8_t result = TBX_ERROR;
+  uint8_t remainingLen = 0;
+  uint8_t maxSeedBytesPerDto;
+  uint8_t seedIdx = 0;
+
+  /* Verify parameter. */
+  TBX_ASSERT((seedPtr != NULL) && (seedLen != NULL));
+
+  /* Only continue with valid parameter and xcpMaxDto has a valid length. */
+  if ((seedPtr != NULL) && (seedLen != NULL) && (xcpMaxDto <= PORT_XCP_PACKET_SIZE_MAX))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* Store the maximum seed bytes that fit on a response. Note that the uin8_t typecast
+     * is okay, because a compile time plausibility check is performed on macro
+     * PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned 8-bit.
+     */
+    maxSeedBytesPerDto = (uint8_t)xcpMaxDto - 2U;
+
+    /* Request (first part of) the seed for unlocking the programming resources. */
+    if (XcpLoaderSendCmdGetSeed(XCPLOADER_RESOURCE_PGM, 0U, &seedPtr[seedIdx],
+        &remainingLen) != TBX_OK)
+    {
+      /* Could not read the first part of the seed. Flag error. */
+      result = TBX_ERROR;
+    }
+    else
+    {
+      /* Store total length of the seed. */
+      *seedLen = remainingLen;
+    }
+
+    /* Only continue if all is okay and more parts of the seed need to be requested. */
+    if ((result == TBX_OK) && (remainingLen > maxSeedBytesPerDto))
+    {
+      /* Keep requested more seed bytes until all were uploaded. */
+      while (remainingLen > maxSeedBytesPerDto)
+      {
+        /* Update the seed indexer for the next part. */
+        seedIdx += maxSeedBytesPerDto;
+        if (XcpLoaderSendCmdGetSeed(XCPLOADER_RESOURCE_PGM, 1U, &seedPtr[seedIdx],
+            &remainingLen) != TBX_OK)
+        {
+          /* Could not read the next part of the seed. Flag error and abort. */
+          result = TBX_ERROR;
+          break;
+        }
+      }
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderUploadSeed ***/
+
+
+/************************************************************************************//**
+** \brief     Downloads the key to the target to unlock the programming resource.
+** \param     keyPtr Byte array with the key bytes.
+** \param     keyLen Total number of bytes in the key.
+** \return    TBX_OK if the programming resource is unlocked, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderDownloadKeyAndUnlock(uint8_t const * keyPtr, uint8_t keyLen)
+{
+  uint8_t result = TBX_ERROR;
+  uint8_t currentlyProtectedResources = 0U;
+  uint8_t remainingLen = 0U;
+  uint8_t currentLen = 0U;
+  uint8_t maxKeyBytesPerCto;
+  uint8_t keyIdx = 0U;
+
+  /* Verify parameters. */
+  TBX_ASSERT((keyPtr != NULL) && (keyLen > 0U));
+
+  /* Only continue with valid parameters and xcpMaxCto has a valid length. */
+  if ((keyPtr != NULL) && (keyLen > 0U) && (xcpMaxCto <= PORT_XCP_PACKET_SIZE_MAX))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* Store the maximum key bytes that fit on a request. Note that the uin8_t typecast
+     * is okay, because a compile time plausibility check is performed on macro
+     * PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned 8-bit.
+     */
+    maxKeyBytesPerCto = (uint8_t)xcpMaxCto - 2U;
+
+    /* Initialize remaining length. */
+    remainingLen = keyLen;
+
+    /* Send the key to unlock the resource. */
+    while (remainingLen > 0U)
+    {
+      /* Determine how many key bytes are about to be sent. */
+      currentLen = remainingLen;
+      if (currentLen > maxKeyBytesPerCto)
+      {
+        currentLen = maxKeyBytesPerCto;
+      }
+      /* Send the (possible partial) unlock command. */
+      if (XcpLoaderSendCmdUnlock(&keyPtr[keyIdx], remainingLen,
+          &currentlyProtectedResources) != TBX_OK)
+      {
+        /* Flag the error and abort the loop. */
+        result = TBX_ERROR;
+        break;
+      }
+      /* Update key indexer and the remaining length */
+      remainingLen -= currentLen;
+      keyIdx += currentLen;
+      /* Check if the key was now completely sent. */
+      if (remainingLen == 0U)
+      {
+        /* Double-check that the programming resource is now unlocked. */
+        if ((currentlyProtectedResources & XCPLOADER_RESOURCE_PGM) != 0U)
+        {
+          /* Programming resource unlock operation failed. */
+          result = TBX_ERROR;
+        }
+      }
+    }
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderDownloadKeyAndUnlock ***/
 
 
 /************************************************************************************//**

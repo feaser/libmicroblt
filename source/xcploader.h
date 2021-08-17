@@ -50,12 +50,6 @@
 extern "C" {
 #endif
 
-/* TODO Figure out how to add seed/key functionality. In LibOpenBLT it is linked as an
- * an entry like this:
- *     char const * seedKeyFile;
- * Perhaps simple app/port specific hook functions, just like those for packet rx/tx?
- */
-
 /****************************************************************************************
 * Type definitions
 ****************************************************************************************/

@@ -1,7 +1,7 @@
 /************************************************************************************//**
 * \file         srecreader.h
 * \brief        S-record firmware file reader header file.
-* \ingroup      Firmware
+* \ingroup      SRecReader
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T
@@ -30,6 +30,15 @@
 * SOFTWARE.
 *
 * \endinternal
+****************************************************************************************/
+/************************************************************************************//**
+* \defgroup   SRecReader S-Record reader
+* \brief      This module implements the S-record firmware reader that can be linked
+*             to the Firmware module.
+* \ingroup    Firmware
+* \details
+* This S-Record reader module implements functionality for parsing a firmware file in the
+* S-Record format.
 ****************************************************************************************/
 #ifndef SRECREADER_H
 #define SRECREADER_H

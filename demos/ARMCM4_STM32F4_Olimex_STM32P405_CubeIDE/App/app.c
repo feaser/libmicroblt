@@ -78,6 +78,8 @@ static void     AppButtonScanTask(void * pvParameters);
 static uint32_t AppPortSystemGetTime(void);
 static uint8_t  AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket);
 static uint8_t  AppPortXcpReceivePacket(tPortXcpPacket * rxPacket);
+static uint8_t  AppPortXcpComputeKeyFromSeed(uint8_t seedLen, uint8_t const * seedPtr,
+                                             uint8_t * keyLenPtr, uint8_t * keyPtr);
 static void     AppCanMessageReceived(tCanMsg const * msg);
 static void     AppAssertionHandler(const char * const file, uint32_t line);
 
@@ -115,7 +117,8 @@ void AppInit(void)
   {
     .SystemGetTime = AppPortSystemGetTime,
     .XcpTransmitPacket = AppPortXcpTransmitPacket,
-    .XcpReceivePacket = AppPortXcpReceivePacket
+    .XcpReceivePacket = AppPortXcpReceivePacket,
+    .XcpComputeKeyFromSeed = AppPortXcpComputeKeyFromSeed
   };
 
   /* Register the application specific assertion handler. */
@@ -503,6 +506,48 @@ static uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
   /* Give the result back to the caller. */
   return result;
 } /*** end of AppPortXcpReceivePacket ****/
+
+
+/************************************************************************************//**
+** \brief     Computes the key for the programming resource.
+** \param     seedLen  length of the seed
+** \param     seedPtr  pointer to the seed data
+** \param     keyLenPtr pointer where to store the key length
+** \param     keyPtr pointer where to store the key data
+** \return    TBX_OK if the key could be calculated, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t AppPortXcpComputeKeyFromSeed(uint8_t seedLen, uint8_t const * seedPtr,
+                                            uint8_t * keyLenPtr, uint8_t * keyPtr)
+{
+  uint8_t result = TBX_FALSE;
+  uint8_t cnt;
+
+  /* Verify parameters. */
+  TBX_ASSERT((seedLen > 0U) && (seedPtr != NULL) && (keyLenPtr != NULL) &&
+             (keyPtr != NULL));
+
+  /* Only continue with valid parameters. */
+  if ((seedLen > 0U) && (seedPtr != NULL) && (keyLenPtr != NULL) && (keyPtr != NULL))
+  {
+    /* This example implementation of the key algorithm simply decrements the value
+     * of each seed byte by 1. This coincides with the default implementation of the
+     * hook-function XcpVerifyKeyHook() in the OpenBLT demo bootloaders.
+     */
+    /* Compute the key. */
+    for (cnt = 0U; cnt < seedLen; cnt++)
+    {
+      keyPtr[cnt] = seedPtr[cnt] - 1U;
+    }
+    /* Set the key length. */
+    *keyLenPtr = seedLen;
+    /* Update the result value. */
+    result = TBX_OK;
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpComputeKeyFromSeed ***/
 
 
 /************************************************************************************//**

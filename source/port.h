@@ -85,6 +85,13 @@ typedef struct
    *         packet should be store in the rxPacket parameter.
    */
   uint8_t  (* XcpReceivePacket) (tPortXcpPacket * rxPacket);
+
+  /** \brief Calculates the key to unlock the programming resource, based on the given
+   *         seed. This function should return TBX_OK if the key could be calculated,
+   *         TBX_ERROR otherwise.
+   */
+  uint8_t  (* XcpComputeKeyFromSeed) (uint8_t seedLen, uint8_t const * seedPtr,
+                                      uint8_t * keyLenPtr, uint8_t * keyPtr);
 } tPort;
 
 

@@ -1,7 +1,7 @@
 /************************************************************************************//**
 * \file         srecreader.c
 * \brief        S-record firmware file reader source file.
-* \ingroup      Firmware
+* \ingroup      SRecReader
 * \internal
 *----------------------------------------------------------------------------------------
 *                          C O P Y R I G H T

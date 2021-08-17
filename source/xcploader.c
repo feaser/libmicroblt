@@ -53,6 +53,8 @@
 #define XCPLOADER_CMD_PROGRAM_START   (0xD2U)    /**< XCP program start command code.  */
 #define XCPLOADER_CMD_UPLOAD          (0xF5u)    /**< XCP upload command code.         */
 #define XCPLOADER_CMD_SET_MTA         (0xF6U)    /**< XCP set mta command code.        */
+#define XCPLOADER_CMD_UNLOCK          (0xF7U)    /**< XCP unlock command code.         */
+#define XCPLOADER_CMD_GET_SEED        (0xF8U)    /**< XCP get seed command code.       */
 #define XCPLOADER_CMD_GET_STATUS      (0xFDU)    /**< XCP get status command code.     */
 #define XCPLOADER_CMD_CONNECT         (0xFFU)    /**< XCP connect command code.        */
 
@@ -113,6 +115,10 @@ static uint8_t  XcpLoaderSendCmdProgramStart(void);
 static uint8_t  XcpLoaderSendCmdProgramReset(void);
 static uint8_t  XcpLoaderSendCmdProgram(uint8_t len, uint8_t const * data);
 static uint8_t  XcpLoaderSendCmdProgramMax(uint8_t const * data);
+static uint8_t  XcpLoaderSendCmdGetSeed(uint8_t resource, uint8_t mode, uint8_t * seed,
+                                        uint8_t * seedLen);
+static uint8_t  XcpLoaderSendCmdUnlock(uint8_t const * key, uint8_t keyLen,
+                                       uint8_t * protectedResources);
 static uint8_t  XcpLoaderSendCmdSetMta(uint32_t address);
 static uint8_t  XcpLoaderSendCmdProgramClear(uint32_t len);
 static uint8_t  XcpLoaderSendCmdUpload(uint8_t * data, uint8_t len);
@@ -376,7 +382,7 @@ static uint8_t XcpLoaderWriteData(uint32_t address, uint32_t len, uint8_t const 
     {
       /* Note that the uin8_t typecast on xcpMaxProgCto inside the loop is okay, because
        * a compile time plausibility check is performed on macro
-       * PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in unsigned 8-bit.
+       * PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned 8-bit.
        */
       while (continueLoop == TBX_TRUE)
       {
@@ -465,7 +471,7 @@ static uint8_t XcpLoaderReadData(uint32_t address, uint32_t len, uint8_t * data)
     {
       /* Note that the uin8_t typecast on xcpMaxDto inside the loop is okay, because
        * a compile time plausibility check is performed on macro
-       * PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in unsigned 8-bit.
+       * PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned 8-bit.
        */
       while (continueLoop == TBX_TRUE)
       {
@@ -955,7 +961,7 @@ static uint8_t XcpLoaderSendCmdProgramMax(uint8_t const * data)
       reqPacket.data[cnt+1U] = data[cnt];
     }
     /* Note that the uin8_t typecast is okay, because a compile time plausibility check
-     * is performed on macro PORT_XCP_PACKET_SIZE_MAX, so make sure it fits in
+     * is performed on macro PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in
      * unsigned 8-bit.
      */
     reqPacket.len = (uint8_t)xcpMaxProgCto;
@@ -983,6 +989,163 @@ static uint8_t XcpLoaderSendCmdProgramMax(uint8_t const * data)
   return result;
 
 } /*** end of XcpLoaderSendCmdProgramMax ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP Get Seed command.
+** \param     resource The resource to unlock (XCPPROTECT_RESOURCE_xxx).
+** \param     mode 0 for the first part of the seed, 1 for the remaining part.
+** \param     seed Pointer to byte array where the received seed is stored.
+** \param     seedLen Length of the seed in bytes.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdGetSeed(uint8_t resource, uint8_t mode, uint8_t * seed,
+                                       uint8_t * seedLen)
+{
+  uint8_t        result = TBX_ERROR;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+  uint8_t        currentSeedLen;
+  uint8_t        cnt;
+
+  /* Verify parameters. */
+  TBX_ASSERT((seed != NULL) && (seedLen != NULL));
+
+  /* Only continue with valid parameters, a supported resource value and xcpMaxDto has
+   * a valid length.
+   */
+  if ((seed != NULL) && (seedLen != NULL) && (resource == XCPLOADER_RESOURCE_PGM) &&
+      (xcpMaxDto <= PORT_XCP_PACKET_SIZE_MAX))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* Prepare the command packet. */
+    reqPacket.data[0] = XCPLOADER_CMD_GET_SEED;
+    reqPacket.data[1] = mode;
+    reqPacket.data[2] = resource;
+    reqPacket.len = 3U;
+
+    /* Send the request packet and attempt to receive the response packet. */
+    if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT1) != TBX_OK)
+    {
+      /* Did not receive a response packet in time. Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if a response packet was received. */
+    if (result == TBX_OK)
+    {
+      /* Check if the response was valid. */
+      if ( (resPacket.len <= 2U) || (resPacket.len > xcpMaxDto) ||
+           (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+      {
+        /* Not a valid or positive response. Flag the error. */
+        result = TBX_ERROR;
+      }
+    }
+
+    /* Only process the response data in case the response was valid. */
+    if (result == TBX_OK)
+    {
+      /* Store the seed length. */
+      *seedLen = resPacket.data[1];
+      /* Determine the number of seed bytes in the current response. Note that the uin8_t
+       * typecast on xcpMaxDto is okay, because a compile time plausibility check is
+       * performed on macro PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned
+       * 8-bit.
+       */
+      currentSeedLen = *seedLen;
+      if (currentSeedLen > ((uint8_t)xcpMaxDto - 2U))
+      {
+        currentSeedLen = ((uint8_t)xcpMaxDto - 2U);
+      }
+      /* Store the seed bytes. */
+      for (cnt = 0U; cnt < currentSeedLen; cnt++)
+      {
+        seed[cnt] = resPacket.data[cnt + 2U];
+      }
+    }
+  }
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderSendCmdGetSeed ***/
+
+
+/************************************************************************************//**
+** \brief     Sends the XCP Unlock command.
+** \param     key Pointer to a byte array containing the key.
+** \param     keyLen The length of the key in bytes.
+** \param     protectedResources Current resource protection status.
+** \return    TBX_OK if successful, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+static uint8_t XcpLoaderSendCmdUnlock(uint8_t const * key, uint8_t keyLen,
+                                      uint8_t * protectedResources)
+{
+  uint8_t        result = TBX_ERROR;
+  tPortXcpPacket reqPacket;
+  tPortXcpPacket resPacket;
+  uint8_t        keyCurrentLen;
+  uint8_t        cnt;
+
+  /* Verify parameters. */
+  TBX_ASSERT((key != NULL) && (keyLen > 0U) && (protectedResources != NULL));
+
+  /* Only continue with valid parameters. */
+  if ((key != NULL) && (keyLen > 0U) && (protectedResources != NULL))
+  {
+    /* Set a positive result and only negate upon error detection from here on. */
+    result = TBX_OK;
+
+    /* Prepare the command packet. */
+    reqPacket.data[0] = XCPLOADER_CMD_UNLOCK;
+    reqPacket.data[1] = keyLen;
+    /* Determine number of key bytes for the packet. Note that the uin8_t typecast on
+     * xcpMaxCto is okay, because a compile time plausibility check is performed on macro
+     * PORT_XCP_PACKET_SIZE_MAX, to make sure it fits in unsigned 8-bit.
+     */
+    keyCurrentLen = keyLen;
+    if (keyCurrentLen > ((uint8_t)xcpMaxCto - 2U))
+    {
+      keyCurrentLen = (uint8_t)xcpMaxCto - 2U;
+    }
+    /* Copy key bytes. */
+    for (cnt = 0; cnt < keyCurrentLen; cnt++)
+    {
+      reqPacket.data[cnt + 2U] = key[cnt];
+    }
+    reqPacket.len = keyCurrentLen + 2U;
+
+    /* Send the request packet and attempt to receive the response packet. */
+    if (XcpExchangePacket(&reqPacket, &resPacket, xcpSettings.timeoutT1) != TBX_OK)
+    {
+      /* Did not receive a response packet in time. Flag the error. */
+      result = TBX_ERROR;
+    }
+
+    /* Only continue if a response packet was received. */
+    if (result == TBX_OK)
+    {
+      /* Check if the response was valid. */
+      if ( (resPacket.len != 2U) || (resPacket.data[0U] != XCPLOADER_CMD_PID_RES) )
+      {
+        /* Not a valid or positive response. Flag the error. */
+        result = TBX_ERROR;
+      }
+    }
+
+    /* Only process the response data in case the response was valid. */
+    if (result == TBX_OK)
+    {
+      /* Store the current resource protection status. */
+      *protectedResources = resPacket.data[1];
+    }
+  }
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of XcpLoaderSendCmdUnlock ***/
 
 
 /************************************************************************************//**

@@ -1,5 +1,5 @@
 /************************************************************************************//**
-* \file         MicroTBXConfig.h
+* \file         tbx_conf.h
 * \brief        Project specific MicroTBX configuration header file.
 * \internal
 *----------------------------------------------------------------------------------------
@@ -30,8 +30,8 @@
 *
 * \endinternal
 ****************************************************************************************/
-#ifndef MICRO_TBX_CONFIG_H
-#define MICRO_TBX_CONFIG_H
+#ifndef TBX_CONF_H
+#define TBX_CONF_H
 
 /* Note that this is a project specific configuration file for MicroTBX. It is enabled
  * by setting the macro definition PROJ_TBX_CONF_H="MicroTBXConfig.h" in the compiler's
@@ -59,5 +59,5 @@ extern "C" {
 }
 #endif
 
-#endif /* MICRO_TBX_CONFIG_H */
-/*********************************** end of MicroTBXConfig.h ***************************/
+#endif /* TBX_CONF_H */
+/*********************************** end of tbx_conf.h *********************************/

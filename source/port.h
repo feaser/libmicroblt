@@ -82,7 +82,7 @@ typedef struct
   /** \brief Attempts to receive an XCP packet using the transport layer implemented by
    *         the port. The reception should be non-blocking. The function should return
    *         TBX_TRUE if a packet was received, TBX_FALSE otherwise. A newly received
-   *         packet should be store in the rxPacket parameter.
+   *         packet should be stored in the rxPacket parameter.
    */
   uint8_t  (* XcpReceivePacket) (tPortXcpPacket * rxPacket);
 

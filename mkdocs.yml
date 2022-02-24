@@ -1,0 +1,11 @@
+site_name: LibMicroBLT User Manual
+site_description: User Manual for LibMicroBLT, the embedded library for interfacing with the OpenBLT bootloader
+repo_url: https://github.com/feaser/libmicroblt
+theme: readthedocs
+nav:
+  - Home: 'index.md'
+  - API reference: 'apiref.md'
+  - Getting started: 'getting_started.md'
+  - Demo application: 'demo.md'
+  - MISRA compliance: 'misra.md'
+  - Licensing: 'license.md'

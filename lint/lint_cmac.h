@@ -114,7 +114,7 @@
 #define __ULACCUM_IBIT__ 32
 #define __FLT64_MANT_DIG__ 53
 #define __UACCUM_EPSILON__ 0x1P-16UK
-#define __GNUC__ 9
+#define __GNUC__ 8
 #define __ULLACCUM_MAX__ 0XFFFFFFFFFFFFFFFFP-32ULLK
 #define __HQ_IBIT__ 0
 #define __FLT_HAS_DENORM__ 1
@@ -127,7 +127,6 @@
 #define __ULFRACT_IBIT__ 0
 #define __INT_FAST32_MAX__ 0x7fffffff
 #define __DBL_HAS_INFINITY__ 1
-#define __HAVE_SPECULATION_SAFE_VALUE 1
 #define __ACCUM_IBIT__ 16
 #define __DEC32_MIN_EXP__ (-94)
 #define __THUMB_INTERWORK__ 1
@@ -191,7 +190,7 @@
 #define __UTQ_FBIT__ 128
 #define __FLT_MANT_DIG__ 24
 #define __LDBL_DECIMAL_DIG__ 17
-#define __VERSION__ "9.3.1 20200408 (release)"
+#define __VERSION__ "8.2.1 20181213 (release) [gcc-8-branch revision 267074]"
 #define __UINT64_C(c) c ## ULL
 #define __ULLFRACT_FBIT__ 64
 #define __FRACT_EPSILON__ 0x1P-15R
@@ -367,7 +366,7 @@
 #define __DEC128_MAX_EXP__ 6145
 #define __FLT32X_HAS_QUIET_NAN__ 1
 #define __ATOMIC_CONSUME 1
-#define __GNUC_MINOR__ 3
+#define __GNUC_MINOR__ 2
 #define __INT_FAST16_WIDTH__ 32
 #define __UINTMAX_MAX__ 0xffffffffffffffffULL
 #define __DEC32_MANT_DIG__ 7

@@ -303,7 +303,7 @@ void BltFirmwareTerminate(void)
 
 /************************************************************************************//**
 ** \brief     Opens the firmware file and browses through its contents to collect
-**            information about the firmware data segment it contains.
+**            information about the firmware data segments it contains.
 ** \param     firmwareFile Firmware filename including its full path.
 ** \return    TBX_OK if successful, TBX_ERROR otherwise.
 **
@@ -371,7 +371,7 @@ uint8_t BltFirmwareSegmentGetCount(void)
 **            address that its data belongs to and the total number of data bytes in the
 **            segment.
 ** \param     idx Zero-based segment index. Valid values are between 0 and
-**            (SegmentGetCount() - 1).
+**            (BltFirmwareSegmentGetCount() - 1).
 ** \param     address The base memory address of the segment's data is written to this
 **            pointer.
 ** \return    The total number of data bytes inside this segment.
@@ -386,9 +386,9 @@ uint32_t BltFirmwareSegmentGetInfo(uint8_t idx, uint32_t * address)
 
 /************************************************************************************//**
 ** \brief     Opens the firmware data segment for reading. This should always be called
-**            before calling the SegmentGetNextData() function.
+**            before calling the BltFirmwareSegmentGetNextData() function.
 ** \param     idx Zero-based segment index. Valid values are between 0 and
-**            (SegmentGetCount() - 1).
+**            (BltFirmwareSegmentGetCount() - 1).
 **
 ****************************************************************************************/
 void BltFirmwareSegmentOpen(uint8_t idx)
@@ -407,8 +407,8 @@ void BltFirmwareSegmentOpen(uint8_t idx)
 ** \param     address The starting memory address of this chunk of firmware data is
 **            written to this pointer.
 ** \param     len  The length of the firmware data chunk is written to this pointer.
-** \return    Data pointer to the read firmware if successul, NULL otherwise.
-** \attention There are three possible outsomes when calling this function:
+** \return    Data pointer to the read firmware if successful, NULL otherwise.
+** \attention There are three possible outcomes when calling this function:
 **            1) len > 0 and a non-NULL pointer is returned. This means valid data was
 **               read.
 **            2) len = 0 and a non-NULL pointer is returned. This means the end of the

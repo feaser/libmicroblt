@@ -1,4 +1,5 @@
-# Licensing
+# License
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 LibMicroBLT is released under the MIT license. This permissive license enables you to include and distribute LibMicroBLT with your firmware, even if it is proprietary. Refer to the following table for answers to frequently asked questions regarding the MIT license.
 

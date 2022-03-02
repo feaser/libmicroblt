@@ -27,7 +27,7 @@ The online user manual is located at the following location:
 
 ## Development
 
-Development of MicroTBX takes place at GitHub. Feel free to contribute by submitting issues and pull requests.
+Development of LibMicroBLT takes place at GitHub. Feel free to contribute by submitting issues and pull requests.
 
 * [https://github.com/feaser/libmicroblt/](https://github.com/feaser/libmicroblt/)
 

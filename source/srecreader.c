@@ -392,7 +392,8 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
 ****************************************************************************************/
 static void SRecReaderFileClose(void)
 {
-  tSRecSegment * segment;
+  tSRecSegment * currentSegment;
+  tSRecSegment * nextSegment;
 
   /* Only close the file if one is actually opened. */
   if (srecHandle.fileOpened == TBX_TRUE)
@@ -402,13 +403,15 @@ static void SRecReaderFileClose(void)
     /* Close the file. */
     (void)f_close(&srecHandle.file);
     /* Iterate over the linked list contents. */
-    segment = TbxListGetFirstItem(srecHandle.segmentList);
-    while (segment != NULL)
+    currentSegment = TbxListGetFirstItem(srecHandle.segmentList);
+    while (currentSegment != NULL)
     {
+      /* Get the next segment, before the current segments' memory is released. */
+      nextSegment = TbxListGetNextItem(srecHandle.segmentList, currentSegment);
       /* Give the allocated memory for the segment back to the memory pool. */
-      TbxMemPoolRelease(segment);
+      TbxMemPoolRelease(currentSegment);
       /* Continue with the next segment. */
-      segment = TbxListGetNextItem(srecHandle.segmentList, segment);
+      currentSegment = nextSegment;
     }
     /* Delete the linked list with segments. */
     TbxListDelete(srecHandle.segmentList);

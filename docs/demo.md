@@ -64,5 +64,5 @@ For detecting the firmware file on the SD card, you can take function `AppLocate
 
 The demo application builds on the [FreeRTOS](https://www.freertos.org/) real-time operating system. However, this is not mandatory for LibMicroBLT. You can use whatever operating system you prefer, even if it's a basic super loop that drives your firmware. Note that the demo application showcases how to leverage [MicroTBX's memory pools](https://feaser.github.io/microtbx/mempools/) for FreeRTOS' heap management. Feel free to reuse it in your own firmware:
 
-* `demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/App/FreeRTOSHeap.c`
+* `demos/third_party/microtbx/source/extra/freertos/tbxfreertos.c`
 

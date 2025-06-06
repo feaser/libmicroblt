@@ -322,28 +322,17 @@ static uint8_t SRecReaderFileOpen(char const * firmwareFile)
             if (segment == NULL)
             {
               /* Attempt to allocate memory to store the new segment. */
-              segment = TbxMemPoolAllocate(sizeof(tSRecSegment));
-              /* Automatically create or increase the memory pool if it was too small. */
+              segment = TbxMemPoolAllocateAuto(sizeof(tSRecSegment));
+              /* Verify segment allocation. */
               if (segment == NULL)
               {
-                /* No need to check the return value, because we'll attempt to allocate
-                 * from the memory pool right way. That will tell us if the memory pool
-                 * increase was successful.
+                /* Could not allocate memory. Heap is probably configured too small.
+                 * Increase TBX_CONF_HEAP_SIZE to resolve the problem. All we can
+                 * do now is flag the error.
                  */
-                (void)TbxMemPoolCreate(1, sizeof(tSRecSegment));
-                /* Allocation should now work. */
-                segment = TbxMemPoolAllocate(sizeof(tSRecSegment));
-                /* Verify segment allocation. */
-                if (segment == NULL)
-                {
-                  /* Could not allocate memory. Heap is probably configured too small.
-                   * Increase TBX_CONF_HEAP_SIZE to resolve the problem. All we can
-                   * do now is flag the error.
-                   */
-                  result = TBX_ERROR;
-                  stopLineLoop = TBX_TRUE;
-                  continue;
-                }
+                result = TBX_ERROR;
+                stopLineLoop = TBX_TRUE;
+                continue;
               }
               /* Initialize the newly created segment. */
               segment->addr = lineAddress;

@@ -105,31 +105,13 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block */
 {
   void * result;
 
-  /* Attempt to allocate a block from the best fitting memory pool. */
-  result = TbxMemPoolAllocate(msize);
-  /* Was the allocation not successful? */
-  if (result == NULL)
-  {
-    /* The allocation failed. This can have two reasons:
-     *   1. A memory pool for the requested size hasn't yet been created.
-     *   2. The memory pool for the requested size has no more free blocks.
-     * Both situations can be solved by calling TbxMemPoolCreate(), as this
-     * function automatically extends a memory pool, if it was created before.
-     * Note that ther is not need to check the return value, because we will
-     * attempts to allocate again right afterwards. We can catch the error
-     * there in case the allocation fails.
-     */
-    (void)TbxMemPoolCreate(1U, msize);
-
-    /* Assuming sufficient heap was available, the memory pool was extended.
-     * Attempt to allocate the block again. Note that if it fails, the result
-     * is already NULL to flag this error.
-     */
-    result = TbxMemPoolAllocate(msize);
-
-    /* Assert the allocation result for debugging purposes. */
-    TBX_ASSERT(result != NULL);
-  }
+  /* Attempt to allocate a block from a memory pool with the same size. If non-existant,
+   * automatically create the memory pool. If no more free blocks are available in the
+   * memory pool, automatically expand the memory pool by adding one more block.
+   */
+  result = TbxMemPoolAllocateAuto(msize);
+  /* Assert the allocation result for debugging purposes. */
+  TBX_ASSERT(result != NULL);
 
   /* Give the result back to the caller. */
   return result;

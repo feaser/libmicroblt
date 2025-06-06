@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Getting started - LibMicroBLT User Manual</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Getting started";
+        var mkdocs_page_input_path = "getting_started.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> LibMicroBLT User Manual
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../apiref/">API reference</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Getting started</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#getting-the-code">Getting the code</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#integrate-microtbx-and-fatfs">Integrate MicroTBX and FatFS</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#integrate-libmicroblt">Integrate LibMicroBLT</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#add-port-function-placeholders">Add port function placeholders</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#library-initialization">Library initialization</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#implement-the-port-functions">Implement the port functions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#firmware-update-procedure">Firmware update procedure</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../demo/">Demo application</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../misra/">MISRA compliance</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">LibMicroBLT User Manual</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Getting started</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/feaser/libmicroblt/edit/master/docs/getting_started.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="getting-started-with-libmicroblt">Getting started with LibMicroBLT</h1>
+<p>This section explains step-by-step how to get LibMicroBLT integrated and operational in your own firmware.</p>
+<h2 id="getting-the-code">Getting the code</h2>
+<p>The first step is getting the code. Two options exists:</p>
+<p><strong>Download the latest stable release from GitHub:</strong></p>
+<ul>
+<li><a href="https://github.com/feaser/libmicroblt/releases">https://github.com/feaser/libmicroblt/releases</a></li>
+</ul>
+<p><strong>Clone the development version from GitHub:</strong></p>
+<ul>
+<li><code>git clone https://github.com/feaser/libmicroblt.git</code></li>
+<li><code>git submodule update --init</code></li>
+</ul>
+<p>Option 1 is the recommended option. Option 2 is only needed, when you want to participate in the development. For example by submitting a pull request.</p>
+<h2 id="integrate-microtbx-and-fatfs">Integrate MicroTBX and FatFS</h2>
+<p>As shown in the presentation of the <a href="../#library-architecture">LibMicroBLT architecture</a>, this library depends on two third-party components:</p>
+<ul>
+<li>Feaser's own <a href="https://github.com/feaser/microtbx/">MicroTBX</a> - Generic microcontroller software toolbox.</li>
+<li>ELM's <a href="http://elm-chan.org/fsw/ff/00index_e.html">FatFS</a> - For accessing a FAT32 file system.</li>
+</ul>
+<p>Start by integrating these two modules into your firmware. The LibMicroBLT package includes both components, meaning that you can copy the source code from there:</p>
+<p><img alt="" src="../images/third_party_sources.png" /></p>
+<p>Refer to the MicroTBX and FatFS websites for detailed instructions on how to integrate these components into your firmware. Alternatively, you can refer to the <a href="../demo/">demo application</a> that's included in the LibMicroBLT package.</p>
+<h2 id="integrate-libmicroblt">Integrate LibMicroBLT</h2>
+<p>After integrating the third-party component dependencies, continue with the actual integration of LibMicroBLT's sources. You can find these in the <code>source</code> directory:</p>
+<p><img alt="" src="../images/libmicroblt_sources.png" /></p>
+<ul>
+<li>Copy all the files from the <code>source</code> directory to your firmware's project.</li>
+<li>Configure your project such that the added <code>.c</code> files are compiled and linked during a build.</li>
+<li>Add the directory that contains the added <code>.h</code> files to your compiler's include path.</li>
+<li>In all <code>.c</code> source files, where you plan on using LibMicroBLT related functionality, include the library's API header-file:</li>
+</ul>
+<pre><code class="language-c">#include &lt;microblt.h&gt;
+</code></pre>
+<h2 id="add-port-function-placeholders">Add port function placeholders</h2>
+<p>The LibMicroBLT code itself is hardware independent. However, it does need access to some of your microcontroller's peripherals. For example for a time reference and for the communication with the other microcontroller, which runs the OpenBLT bootloader. You can implement these hardware specifics in port functions, which we'll link to LibMicroBLT in the next section. Start by adding empty placeholders for these port functions:</p>
+<pre><code class="language-c">/************************************************************************************//**
+** \brief     Obtains the current system time in milliseconds.
+** \return    Current system time in milliseconds.
+**
+****************************************************************************************/
+uint32_t AppPortSystemGetTime(void)
+{
+  /* TODO Obtain the current value of the millisecond timer. */
+  return TimerGet();
+} /*** end of AppPortSystemGetTime ***/
+
+
+/************************************************************************************//**
+** \brief     Transmits an XCP packet using the transport layer implemented by the port.
+**            The transmission itself can be blocking.
+** \param     txPacket The XCP packet to transmit using the application's transport layer
+**            of choice.
+** \return    TBX_OK if the packet could be transmitted, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t AppPortXcpTransmitPacket(tPortXcpPacket const * txPacket)
+{
+  uint8_t result = TBX_ERROR;
+
+  /* Verify parameter. */
+  TBX_ASSERT(txPacket != NULL);
+
+  /* Only continue with valid parameter. */
+  if (txPacket != NULL)
+  {
+    /* TODO Transmit the txPacket. */
+    result = TBX_OK;
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpTransmitPacket ***/
+
+
+/************************************************************************************//**
+** \brief     Attempts to receive an XCP packet using the transport layer implemented by
+**            the port. The reception should be non-blocking.
+** \param     rxPacket Structure where the newly received XCP packet should be stored.
+** \return    TBX_TRUE if a packet was received, TBX_FALSE otherwise.
+**
+****************************************************************************************/
+uint8_t AppPortXcpReceivePacket(tPortXcpPacket * rxPacket)
+{
+  uint8_t result = TBX_FALSE;
+
+  /* Verify parameter. */
+  TBX_ASSERT(rxPacket != NULL);
+
+  /* Only continue with valid parameter. */
+  if (rxPacket != NULL)
+  {
+    /* TODO Check if a new XCP packet was received and store it in rxPacket. */
+    result = TBX_TRUE;
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpReceivePacket ****/
+
+
+/************************************************************************************//**
+** \brief     Computes the key for the programming resource.
+** \param     seedLen  length of the seed
+** \param     seedPtr  pointer to the seed data
+** \param     keyLenPtr pointer where to store the key length
+** \param     keyPtr pointer where to store the key data
+** \return    TBX_OK if the key could be calculated, TBX_ERROR otherwise.
+**
+****************************************************************************************/
+uint8_t AppPortXcpComputeKeyFromSeed(uint8_t seedLen, uint8_t const * seedPtr,
+                                            uint8_t * keyLenPtr, uint8_t * keyPtr)
+{
+  uint8_t result = TBX_FALSE;
+
+  /* Verify parameters. */
+  TBX_ASSERT((seedLen &gt; 0U) &amp;&amp; (seedPtr != NULL) &amp;&amp; (keyLenPtr != NULL) &amp;&amp;
+             (keyPtr != NULL));
+
+  /* Only continue with valid parameters. */
+  if ((seedLen &gt; 0U) &amp;&amp; (seedPtr != NULL) &amp;&amp; (keyLenPtr != NULL) &amp;&amp; (keyPtr != NULL))
+  {
+    /* TODO Compute the key, store it in the keyPtr byte array and set its length in
+     *      keyLenPtr.
+     */
+    result = TBX_OK;
+  }
+
+  /* Give the result back to the caller. */
+  return result;
+} /*** end of AppPortXcpComputeKeyFromSeed ***/
+</code></pre>
+<p>Add them to whichever source file makes the most sense, based on your preferred source code organization. You can of course rename these functions to match your code's naming convention. </p>
+<h2 id="library-initialization">Library initialization</h2>
+<p>When initializing your firmware, make sure to first link your port functions by initializing the <a href="../apiref/#port-module">port module</a> and mount your FAT32 partition. This should be done before you enter your firmware's infinite program loop, e.g. start your RTOS scheduler, and before you call any of the other LibMicroBLT API functions:</p>
+<pre><code class="language-c">tPort const portInterface =
+{
+  .SystemGetTime = AppPortSystemGetTime,
+  .XcpTransmitPacket = AppPortXcpTransmitPacket,
+  .XcpReceivePacket = AppPortXcpReceivePacket,
+  .XcpComputeKeyFromSeed = AppPortXcpComputeKeyFromSeed
+};
+
+/* Initialize the port module for linking the hardware dependent parts. */
+BltPortInit(&amp;portInterface);
+/* Mount the file system, using logical disk 0 */
+f_mount(&amp;fileSystem, &quot;0:&quot;, 0U);
+</code></pre>
+<h2 id="implement-the-port-functions">Implement the port functions</h2>
+<p>The final integration step involves implementing the port functions to work with your microcontroller and preferred communication transport layer for firmware updates. You can find a fully functional version of these port functions in the <a href="../demo/">demo application</a>. It assumes CAN communication between LibMicroBLT and the other microcontroller, which runs the OpenBLT bootloader.</p>
+<p>If you selected a different communication transport layer for firmware updates (RS232, Modbus RTU, etc.), you can look at the OpenBLT code base on how the bootloader expects the <a href="https://www.feaser.com/openblt/lib/exe/fetch.php?media=manual:xcp_1_0_specification.zip">XCP packets</a> to be formatted for your transport layer. </p>
+<h2 id="firmware-update-procedure">Firmware update procedure</h2>
+<p>Once you made it to this point, LibMicroBLT is fully operational and you can use it to perform firmware updates on the connected microcontroller node(s), running the OpenBLT bootloader. The <a href="../demo/">demo application</a> contains a reusable function for this. It's called:</p>
+<pre><code class="language-c">uint8_t UpdateFirmware(char const * firmwareFile, uint8_t nodeId)
+</code></pre>
+<p>Feel free to copy it to your own firmware. You can find it in:</p>
+<ul>
+<li><code>demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/App/update.c</code></li>
+</ul>
+<p>The following flowchart further explains the firmware update procedure, using LibMicroBLT:</p>
+<p><img alt="" src="../images/firmware_update_flowchart.png" /></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../apiref/" class="btn btn-neutral float-left" title="API reference"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../demo/" class="btn btn-neutral float-right" title="Demo application">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/feaser/libmicroblt" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../apiref/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../demo/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

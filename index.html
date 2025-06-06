@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="User Manual for LibMicroBLT, the embedded library for interfacing with the OpenBLT bootloader" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>LibMicroBLT User Manual</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> LibMicroBLT User Manual
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#example-system">Example system</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#library-architecture">Library architecture</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="apiref/">API reference</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="demo/">Demo application</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="misra/">MISRA compliance</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">LibMicroBLT User Manual</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/feaser/libmicroblt/edit/master/docs/index.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="introduction-to-libmicroblt">Introduction to LibMicroBLT</h1>
+<p>The LibMicroBLT library encompasses all the functionality needed to perform a firmware update on another microcontroller, running the <a href="https://www.feaser.com/openblt/doku.php">OpenBLT bootloader</a>. In essence, LibMicroBLT is a microcontroller optimized version of <a href="https://www.feaser.com/openblt/doku.php?id=manual:libopenblt">LibOpenBLT</a>. The latter one was designed for PCs and embedded Linux devices.</p>
+<p>LibMicroBLT assumes that the main controller features a file system for the storing firmware files. For example on an SD card, USB stick or a flash memory chip. Internally, the library uses the <a href="http://elm-chan.org/fsw/ff/00index_e.html">FatFs</a> software component for accessing the file system:</p>
+<p><img alt="" src="images/libmicroblt_architecture.png" /></p>
+<p>You are free to choose how the firmware files end up on the file system. A few ideas:</p>
+<ul>
+<li>Manually copied from your PC.</li>
+<li>Downloaded from an FTP server or network drive.</li>
+<li>Downloaded from cloud storage (S3 bucket, Dropbox, Google Drive, OneDrive, etc.)</li>
+</ul>
+<p>LibMicroBLT is written in the C programming language (C99) with <a href="misra/">MISRA</a> compliance in mind. Thanks to its permissive <a href="license/">MIT license</a>, you are free to integrate and distribute the library in your commercial closed source firmware. </p>
+<p>The library is hardware independent. With the help of the port module, you can link your own implemented hardware specifics. The included <a href="demo/">demo application</a> provides an example of how to implement these port specific functions. This user manual includes an <a href="apiref/">API reference</a>, explaining in details how to use LibMicroBLT. The <a href="getting_started/">getting started section</a> of this user manual contains instructions on how to get LibMicroBLT integrated and up-and-running on your microcontroller.</p>
+<h2 id="example-system">Example system</h2>
+<p>Combining LibMicroBLT with OpenBLT's <a href="https://www.feaser.com/en/addons.php#gateway">Master/Slave Gateway add-on module</a> opens the path to all sorts of nifty system architectures for performing firmware updates. For example:</p>
+<p><img alt="" src="images/example_system_architecture.png" /></p>
+<p>The main controller, running LibMicroBLT, could perform firmware updates on all attached nodes. In this system architecture, you would just need to integrate the Master/Slave Gateway add-on module with the OpenBLT bootloaders on <em>Node A1</em> and <em>Node B1</em>.</p>
+<h2 id="library-architecture">Library architecture</h2>
+<p>The following image illustrates the modular architecture of LibMicroBLT and how it fits into your firmware:</p>
+<p><img alt="" src="images/libmicroblt_modules.png" /></p>
+<p>Firmware typically consist of:</p>
+<ul>
+<li>HAL - Hardware Abstraction Layer. For accessing low-level microcontroller peripherals.</li>
+<li>OS - Operating System. Either the good ol' super loop or a real-time operating system (RTOS).</li>
+<li>APP - Your actual application.</li>
+</ul>
+<p>The LibMicroBLT library sits in between your application and the hardware abstraction layer. That way your own application can call its functions for performing a firmware update on another microcontroller, which runs the OpenBLT bootloader. Furthermore, the library requires access to some hardware specifics. For example to access a timer and communication peripheral(s).</p>
+<p>LibMicroBLT itself depends on two third-party libraries:</p>
+<ul>
+<li><a href="http://elm-chan.org/fsw/ff/00index_e.html">FatFS</a> for file system access to read the actual firmware files.</li>
+<li><a href="https://github.com/feaser/microtbx">MicroTBX</a> for assertions, critical sections, heap, memory pools and linked lists.</li>
+</ul>
+<p>Inside LibMicroBLT, you'll find three modules:</p>
+<ul>
+<li><a href="apiref/#firmware-module">Firmware module</a> - The firmware module embeds all the functionality for reading firmware data from a firmware file.</li>
+<li><a href="apiref/#session-module">Session module</a> - The session module implements all the functionality for communicating  with the OpenBLT bootloader running the other microcontroller(s).</li>
+<li><a href="apiref/#port-module">Port module</a> - The port module makes it possible to connect your hardware specifics to the hardware independent LibMicroBLT library.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="apiref/" class="btn btn-neutral float-right" title="API reference">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/feaser/libmicroblt" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+    
+      <span><a href="apiref/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2025-06-06 14:51:24.508124+00:00
+-->

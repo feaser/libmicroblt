@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Demo application - LibMicroBLT User Manual</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Demo application";
+        var mkdocs_page_input_path = "demo.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> LibMicroBLT User Manual
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../apiref/">API reference</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Demo application</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#system-setup">System setup</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#system-preparation">System preparation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-flash-and-run-the-demo-application">Build, flash and run the demo application</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#perform-a-firmware-update">Perform a firmware update</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#a-closer-look">A closer look</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../misra/">MISRA compliance</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">LibMicroBLT User Manual</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Demo application</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/feaser/libmicroblt/edit/master/docs/demo.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="libmicroblt-demo-application">LibMicroBLT demo application</h1>
+<p>Integrating a new software component into your own firmware is always easier, if you have a fully functional and preconfigured example to refer to. For this purpose a demo application was added to the LibMicroBLT software package. This section explains how to get the demo application up-and-running. Note that there's no need to actually do this yourself. You can alternatively inspect the source of the demo application, to get a feel for how to use LibMicroBLT in your own firmware.</p>
+<h2 id="system-setup">System setup</h2>
+<p>The demo application consists of firmware for the <a href="https://www.olimex.com/Products/ARM/ST/STM32-P405/">Olimex STM32-P405</a> board. This board acts as the main controller, which has LibMicroBLT integrated. It is capable of performing a firmware update on another microcontroller, that runs the OpenBLT bootloader, connected via a CAN bus. It reads the firmware file in the S-record format, from the FAT32 file system on an attached SD card.</p>
+<p><img alt="" src="../images/demo_application_system_setup.png" /></p>
+<p>As the target node, so the one that gets its firmware updated, you can use any of the <a href="https://www.feaser.com/openblt/doku.php?id=manual:demos">OpenBLT demo programs</a>, configured to support firmware updates via CAN. The remainder of this section assumes an <a href="https://www.st.com/en/evaluation-tools/nucleo-f091rc.html">ST Nucleo-F091RC</a> board was selected for the target node. Since this board does not feature a CAN transceiver, a <a href="https://www.waveshare.com/wiki/RS485_CAN_Shield">Waveshare RS485/CAN shield</a> was attached.</p>
+<h2 id="system-preparation">System preparation</h2>
+<p>Assuming that you use the same boards, prepare the system as follows:</p>
+<ol>
+<li>Connect both boards to a CAN bus with proper 120 Ohm line termination resistors.</li>
+<li>Connect an <a href="https://www.st.com/en/development-tools/st-link-v2.html">ST-Link debugger</a> interface to the Olimex STM32-P405 board.</li>
+<li>Power up both boards.</li>
+<li>Flash the <a href="https://github.com/feaser/openblt/tree/master/Target/Demo/ARMCM0_STM32F0_Nucleo_F091RC_CubeIDE/Boot/Debug"><code>openblt_stm32f091.srec</code></a> OpenBLT demo bootloader onto the ST Nucleo-F091RC board.</li>
+<li>Store the <a href="https://github.com/feaser/openblt/tree/master/Target/Demo/ARMCM0_STM32F0_Nucleo_F091RC_CubeIDE/Prog/Debug"><code>demoprog_stm32f091.srec</code></a> OpenBLT demo user program for the ST Nucleo-F091RC board on the SD card.</li>
+<li>Insert the SD card into the Olimex STM32-P405 board.</li>
+</ol>
+<h2 id="build-flash-and-run-the-demo-application">Build, flash and run the demo application</h2>
+<p>With the system prepared, you just need to build, flash and run the demo application. The demo application was developed with the <a href="https://www.st.com/en/development-tools/stm32cubeide.html">STM32CubeIDE</a> development environment. Start STM32CubeIDE, create a new workspace and import the demo application. The demo application is located in:</p>
+<ul>
+<li><code>demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/</code></li>
+</ul>
+<p>Once imported, build the firmware of the demo application by selecting <em>Project</em> &rarr; <em>Build Project</em> from the STM32CubeIDE menu. This creates the firmware file:</p>
+<ul>
+<li><code>demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/Debug/Demo.elf</code></li>
+</ul>
+<p>Start a debugger session to flash this firmware onto the Olimex STM32-P405 board. You can run the demo application using the debugger directly. Alternatively, you can close the debugger session and hit the reset button on the board the run the demo application.</p>
+<h2 id="perform-a-firmware-update">Perform a firmware update</h2>
+<p>To start the firmware update, press the big black push-button on the Olimex STM32-P405 board. The demo application then looks for a file in the root directory on the SD card, which starts with <code>demoprog</code>  and ends with <code>.srec</code>.  In our case, this means it finds the file <code>demoprog_stm32f091.srec</code> on the SD-card. Note that this part is done with the help of function <code>AppLocateFirmwareFile()</code>. </p>
+<p>After detecting the <code>demoprog_stm32f091.srec</code> on the SD card, the demo application starts the firmware update procedure by calling function <code>UpdateFirmware()</code>. This function uses the LibMicroBLT API to:</p>
+<ol>
+<li>Initialize the <a href="../apiref/#firmware-module">Firmware</a> and <a href="../apiref/#session-module">Session</a> modules.</li>
+<li>Open and parse the <code>demoprog_stm32f091.srec</code> firmware file on the SD card.</li>
+<li>Connect to the bootloader on the Nucleo-F091RC board via the CAN bus.</li>
+<li>Erase the flash memory segments that should be reprogrammed.</li>
+<li>Read the new firmware data from the firmware file and program it to the flash memory.</li>
+<li>Disconnect from the bootloader on the Nucleo-F091RC, which also automatically starts the newly programmed firmware.</li>
+<li>Close the firmware file.</li>
+<li>Terminate the Firmware and Session modules.</li>
+</ol>
+<h2 id="a-closer-look">A closer look</h2>
+<p>The logic for the actual firmware update procedure is implemented in function <code>UpdateFirmware()</code> in source file:</p>
+<ul>
+<li><code>demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/App/update.c</code></li>
+</ul>
+<p>It was developed such that you can reuse this source file and function <code>UpdateFirmware()</code> in your own firmware.</p>
+<p>The task that drives the demo application is called <code>AppTask()</code> and is located in source file:</p>
+<ul>
+<li><code>demos/ARMCM4_STM32F4_Olimex_STM32P405_CubeIDE/App/app.c</code></li>
+</ul>
+<p>For detecting the firmware file on the SD card, you can take function <code>AppLocateFirmwareFile()</code> as a starting point. You just need to modify it such that it looks for the filename or filename pattern that you decided on for your firmware files.</p>
+<p>The demo application builds on the <a href="https://www.freertos.org/">FreeRTOS</a> real-time operating system. However, this is not mandatory for LibMicroBLT. You can use whatever operating system you prefer, even if it's a basic super loop that drives your firmware. Note that the demo application showcases how to leverage <a href="https://feaser.github.io/microtbx/mempools/">MicroTBX's memory pools</a> for FreeRTOS' heap management. Feel free to reuse it in your own firmware:</p>
+<ul>
+<li><code>demos/third_party/microtbx/source/extra/freertos/tbxfreertos.c</code></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../getting_started/" class="btn btn-neutral float-left" title="Getting started"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../misra/" class="btn btn-neutral float-right" title="MISRA compliance">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/feaser/libmicroblt" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../getting_started/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../misra/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

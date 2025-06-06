@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>API reference - LibMicroBLT User Manual</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "API reference";
+        var mkdocs_page_input_path = "apiref.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> LibMicroBLT User Manual
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">API reference</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#macros">Macros</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#types">Types</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#tbltsessionsettingsxcpv10">tBltSessionSettingsXcpV10</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#tportxcppacket">tPortXcpPacket</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#tport">tPort</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#port-module">Port module</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#bltportinit">BltPortInit</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltportterminate">BltPortTerminate</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#session-module">Session module</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessioninit">BltSessionInit</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionterminate">BltSessionTerminate</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionstart">BltSessionStart</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionstop">BltSessionStop</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionclearmemory">BltSessionClearMemory</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionwritedata">BltSessionWriteData</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltsessionreaddata">BltSessionReadData</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#firmware-module">Firmware module</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwareinit">BltFirmwareInit</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwareterminate">BltFirmwareTerminate</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwarefileopen">BltFirmwareFileOpen</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwarefileclose">BltFirmwareFileClose</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwaregettotalsize">BltFirmwareGetTotalSize</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwaresegmentgetcount">BltFirmwareSegmentGetCount</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwaresegmentgetinfo">BltFirmwareSegmentGetInfo</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwaresegmentopen">BltFirmwareSegmentOpen</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#bltfirmwaresegmentgetnextdata">BltFirmwareSegmentGetNextData</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../demo/">Demo application</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../misra/">MISRA compliance</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../license/">License</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">LibMicroBLT User Manual</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">API reference</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/feaser/libmicroblt/edit/master/docs/apiref.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="api-reference">API reference</h1>
+<p>This section provides a full reference of all the functions, macros and types that LibMicroBLT offers.</p>
+<h2 id="macros">Macros</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Macro</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>BLT_VERSION_MAIN</code></td>
+<td style="text-align: left;">Main version number of LibMicroBLT.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>BLT_VERSION_MINOR</code></td>
+<td style="text-align: left;">Minor version number of LibMicroBLT.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>BLT_VERSION_PATCH</code></td>
+<td style="text-align: left;">Patch number of LibMicroBLT.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>BLT_SESSION_XCP_V10</code></td>
+<td style="text-align: left;">Session type identifier for XCP version 1.0.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>BLT_FIRMWARE_READER_SRECORD</code></td>
+<td style="text-align: left;">Firmware type identifier for S-record firmware files.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="types">Types</h2>
+<h3 id="tbltsessionsettingsxcpv10">tBltSessionSettingsXcpV10</h3>
+<pre><code class="language-c">typedef struct tBltSessionSettingsXcpV10
+</code></pre>
+<p>Structure layout of the XCP version 1.0 session settings.</p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>timeoutT1</code></td>
+<td>Command response timeout in milliseconds.</td>
+</tr>
+<tr>
+<td><code>timeoutT3</code></td>
+<td>Start programming timeout in milliseconds.</td>
+</tr>
+<tr>
+<td><code>timeoutT4</code></td>
+<td>Erase memory timeout in milliseconds.</td>
+</tr>
+<tr>
+<td><code>timeoutT5</code></td>
+<td>Program memory and reset timeout in milliseconds.</td>
+</tr>
+<tr>
+<td><code>timeoutT6</code></td>
+<td>Connect response timeout in milliseconds.</td>
+</tr>
+<tr>
+<td><code>timeoutT7</code></td>
+<td>Busy wait timer timeout in milliseonds.</td>
+</tr>
+<tr>
+<td><code>connectMode</code></td>
+<td>Connection mode parameter in XCP connect command.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tportxcppacket">tPortXcpPacket</h3>
+<pre><code class="language-c">typedef struct tPortXcpPacket
+</code></pre>
+<p>XCP packet type.</p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td>Byte array with packet data.</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>Number of data bytes stored in the packet.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tport">tPort</h3>
+<pre><code class="language-c">typedef struct tPort
+</code></pre>
+<p>Port interface. The port interface links the hardware specific implementation to the hardware independent library.</p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SystemGetTime</code></td>
+<td>Function pointer to obtain the current system time in milliseconds.</td>
+</tr>
+<tr>
+<td><code>XcpTransmitPacket</code></td>
+<td>Function pointer to transmit an XCP packet using the transport layer<br>implemented by the port.  The transmission itself can be blocking.<br>The function should return <code>TBX_OK</code>  if the packet could be transmitted,<br><code>TBX_ERROR</code> otherwise.</td>
+</tr>
+<tr>
+<td><code>XcpReceivePacket</code></td>
+<td>Function pointer to receive an XCP packet using the transport layer<br>implemented by  the port. The reception should be non-blocking. The<br>function should return <code>TBX_TRUE</code> if a packet was received, <code>TBX_FALSE</code><br>otherwise. A newly received packet should be stored in the rxPacket<br>parameter.</td>
+</tr>
+<tr>
+<td><code>XcpComputeKeyFromSeed</code></td>
+<td>Function pointer to calculates the key to unlock the programming<br>resource, based on the given seed. This function should return <code>TBX_OK</code><br>if the key could be calculated, <code>TBX_ERROR</code> otherwise. Note that it's okay<br>to set this element to <code>NULL</code>, if you do not use the <a href="https://www.feaser.com/openblt/doku.php?id=manual:security">seed/key security<br>feature</a> of the OpenBLT bootloader.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="functions">Functions</h2>
+<h3 id="port-module">Port module</h3>
+<p>The port module makes it possible to connect your hardware specifics to the hardware independent LibMicroBLT library. In your own application you implement the port specific functions. For example for transmitting and receiving XCP communication packet on the transport layer of your choice. You then specify your port specific functions in a variable of type <a href="#tport">tPort</a>. You pass this variable on as a parameter when calling function <a href="#bltportinit">BltPortInit()</a>, which links your hardware specifics to LibMicroBLT. For this reason, you should first call function <a href="#bltportinit">BltPortInit()</a>, before calling any other functions of LibMicroBLT.</p>
+<h4 id="bltportinit">BltPortInit</h4>
+<pre><code class="language-c">void BltPortInit(tPort const * port)
+</code></pre>
+<p>Initializes the port module by linking the port specified by the parameter. Typically called once during firmware initialization. Must be called before calling any other functions of LibMicroBLT.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>port</code></td>
+<td>Pointer to the port to link (type <a href="#tport">tPort</a>).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>This example is taken from the LibMicroBLT demo application, where the application implements the hardware specific functions in:</p>
+<ul>
+<li><code>AppPortSystemGetTime()</code></li>
+<li><code>AppPortXcpTransmitPacket()</code></li>
+<li><code>AppPortXcpReceivePacket()</code></li>
+<li><code>AppPortXcpComputeKeyFromSeed()</code></li>
+</ul>
+<p>Refer to the LibMicroBLT demo application for an example on how to implement or port these functions for your own hardware. Once these port functions are implemented, you link them to LibMicroBLT like this:</p>
+<pre><code class="language-c">tPort const portInterface =
+{
+  .SystemGetTime = AppPortSystemGetTime,
+  .XcpTransmitPacket = AppPortXcpTransmitPacket,
+  .XcpReceivePacket = AppPortXcpReceivePacket,
+  .XcpComputeKeyFromSeed = AppPortXcpComputeKeyFromSeed
+};
+
+BltPortInit(&amp;portInterface);
+</code></pre>
+<h4 id="bltportterminate">BltPortTerminate</h4>
+<pre><code class="language-c">void BltPortTerminate(void)
+</code></pre>
+<p>Terminates the port module. Typically called once during firmware exit. Embedded firmware tends to be driven by an infinite program loop and never exits. In such cases, you can omit calling this function.</p>
+<h3 id="session-module">Session module</h3>
+<p>The session module implements all the functionality for communicating with the OpenBLT bootloader running the other microcontroller(s); The ones on which you want to perform a firmware update from the microcontroller that runs this LibMicroBLT library. The functionality of the session module encompasses:</p>
+<ul>
+<li>Connect and disconnect.</li>
+<li>Erase, write and read memory.</li>
+</ul>
+<h4 id="bltsessioninit">BltSessionInit</h4>
+<pre><code class="language-c">void BltSessionInit(uint32_t type, void const * settings)
+</code></pre>
+<p>Initializes the firmware update session for a specific communication  protocol. This function is typically called at the start of the firmware update.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type</code></td>
+<td>The communication protocol to use for this session. It should be a <a href="#macros"><code>BLT_SESSION_xxx</code></a><br>value.</td>
+</tr>
+<tr>
+<td><code>settings</code></td>
+<td>Pointer to a structure with communication protocol specific settings.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>Initialize the session module for communication using the XCP version 1.0 protocol:</p>
+<pre><code class="language-c">tBltSessionSettingsXcpV10 const    sessionSettings =
+{
+  .timeoutT1   = 1000U,
+  .timeoutT3   = 2000U,
+  .timeoutT4   = 10000U,
+  .timeoutT5   = 1000U,
+  .timeoutT6   = 50U,
+  .timeoutT7   = 2000U,
+  .connectMode = 0
+  };
+
+BltSessionInit(BLT_SESSION_XCP_V10, &amp;sessionSettings);
+</code></pre>
+<h4 id="bltsessionterminate">BltSessionTerminate</h4>
+<pre><code class="language-c">void BltSessionTerminate(void)
+</code></pre>
+<p>Terminates the firmware update session. This function is typically called at the end of the firmware update.</p>
+<h4 id="bltsessionstart">BltSessionStart</h4>
+<pre><code class="language-c">uint8_t BltSessionStart(void)
+</code></pre>
+<p>Starts the firmware update session. This is were the library attempts to activate and connect with the bootloader running on the target, through the transport layer that was specified during the session's initialization.</p>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TBX_OK</code> if successful, <code>TBX_ERROR</code> otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>When attempting to connect to the OpenBLT bootloader on the target microcontroller, the bootloader itself is often not yet active. Instead, the user's firmware is happily running. The firmware typically includes functionality to receive the connection request, after which it activates the bootloader by performing a software reset. If this functionality is not present, the user needs to manually reset the microcontroller. </p>
+<p>It's therefore recommended to try connecting to the OpenBLT bootloader, by calling <code>BltSessionStart()</code> repeatedly for a finite amount of time. Note that the following example also demonstrates how your own application can access the port specific functions:</p>
+<pre><code class="language-c">uint32_t const connectTimeout = 5000U;
+uint32_t       connectStartTime;
+uint32_t       connectDeltaTime;
+uint8_t        connected = TBX_FALSE;
+
+/* Store start time. */
+connectStartTime = PortGet()-&gt;SystemGetTime();
+/* Attempt to connect to the target. */
+connected = BltSessionStart();
+/* Repeat connection attempt for a finite amount of time. */
+while (connected == TBX_FALSE)
+{
+  /* Attempt to connect to the target. */
+  connected = BltSessionStart();
+  /* Handle timeout detection if not yet connected. */
+  if (connected == TBX_FALSE)
+  {
+    /* Calculate elapsed time while waiting for the connection to establish. Note
+     * that this calculation is 32-bit time overflow safe.
+     */
+    connectDeltaTime = PortGet()-&gt;SystemGetTime() - connectStartTime;
+    /* Did a timeout occur? */
+    if (connectDeltaTime &gt; connectTimeout)
+    {
+      /* Could not connect to the target. Stop connection attempts. */
+      break;
+    }
+  }
+}
+</code></pre>
+<h4 id="bltsessionstop">BltSessionStop</h4>
+<pre><code class="language-c">void BltSessionStop(void)
+</code></pre>
+<p>Stops the firmware update session. This is there the library disconnects the transport layer as well. Note that if you are currently connected to the OpenBLT bootloader on the target microcontroller, this requests the bootloader to start the user's firmware again, if a valid one is detected by the bootloader.</p>
+<h4 id="bltsessionclearmemory">BltSessionClearMemory</h4>
+<pre><code class="language-c">uint8_t BltSessionClearMemory(uint32_t address, uint32_t len)
+</code></pre>
+<p>Requests the target to erase the specified range of memory on the target. Note that the target automatically aligns this to the erasable memory block sizes. This typically results in more memory being erased than the range that was specified here. Refer to the target implementation for details.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>address</code></td>
+<td>The starting memory address for the erase operation.</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>The total number of bytes to erase from memory.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TBX_OK</code> if successful, <code>TBX_ERROR</code>otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>The flash memory on the ST STM32F0 microcontroller starts at address <code>0x08000000</code> and consists of 2k sectors. The following code erases the <u>first two</u> 2k sectors, because the OpenBLT bootloader automatically aligns to the sectors of the microcontroller's flash.</p>
+<pre><code class="language-c">BltSessionClearMemory(0x08000010, 2048);
+</code></pre>
+<h4 id="bltsessionwritedata">BltSessionWriteData</h4>
+<pre><code class="language-c">uint8_t BltSessionWriteData(uint32_t address, uint32_t len, uint8_t const * data)
+</code></pre>
+<p>Requests the target to program the specified data to memory. Note that it is the responsibility of the application to make sure the memory range was erased beforehand.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>address</code></td>
+<td>The starting memory address for the write operation.</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>The number of bytes in the data buffer that should be written.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>Pointer to the byte array with data to write.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TBX_OK</code> if successful, <code>TBX_ERROR</code>otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>This code snippet writes 16 bytes to the start of flash on an ST STM32F0 microcontroller:</p>
+<pre><code class="language-c">uint8_t writeData[16] =
+{
+  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+  0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+};
+
+BltSessionWriteData(0x08000000, 16, writeData);
+</code></pre>
+<h4 id="bltsessionreaddata">BltSessionReadData</h4>
+<pre><code class="language-c">uint8_t BltSessionReadData(uint32_t address, uint32_t len, uint8_t * data)
+</code></pre>
+<p>Requests the target to upload the specified range from memory and store its contents in the specified data buffer.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>address</code></td>
+<td>The starting memory address for the read operation.</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>The number of bytes to upload from the target and store in the data buffer.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>Pointer to the byte array where the uploaded data should be stored.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TBX_OK</code> if successful, <code>TBX_ERROR</code>otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>This code snippet reads 16 bytes from the start of flash on an ST STM32F0 microcontroller:</p>
+<pre><code class="language-c">uint8_t readData[16];
+
+BltSessionReadData(0x08000000, 16, readData);
+</code></pre>
+<h3 id="firmware-module">Firmware module</h3>
+<p>The firmware module embeds all the functionality for reading firmware data from a firmware file. It handles all the file parsing of for example the <a href="https://en.wikipedia.org/wiki/SREC_(file_format)">S-record</a> firmware file format. The current implementation of LibMicroBLT assumes that file is present on a locally attached FAT32 file system, which the library accesses with the help of <a href="http://elm-chan.org/fsw/ff/00index_e.html">FatFs</a>.</p>
+<h4 id="bltfirmwareinit">BltFirmwareInit</h4>
+<pre><code class="language-c">void BltFirmwareInit(uint8_t readerType)
+</code></pre>
+<p>Initializes the firmware reader module for a specified firmware file reader. Typically called once upon application initialization.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>readerType</code></td>
+<td>The firmware file reader to use in this module. It should be a<br><a href="#macros">BLT_FIRMWARE_READER_xxx</a> value.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>Initialize the firmware module to parse and read firmware data from S-record firmware files:</p>
+<pre><code class="language-c">BltFirmwareInit(BLT_FIRMWARE_READER_SRECORD);
+</code></pre>
+<h4 id="bltfirmwareterminate">BltFirmwareTerminate</h4>
+<pre><code class="language-c">void BltPortTerminate(void)
+</code></pre>
+<p>Terminates the firmware reader module. Typically called at the end of the application when the firmware reader module is no longer needed.</p>
+<h4 id="bltfirmwarefileopen">BltFirmwareFileOpen</h4>
+<pre><code class="language-c">uint8_t BltFirmwareFileOpen(char const * firmwareFile)
+</code></pre>
+<p>Opens the firmware file and browses through its contents to collect information about the firmware data segments it contains.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>firmwareFile</code></td>
+<td>Firmware filename including its full path.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TBX_OK</code> if successful, <code>TBX_ERROR</code> otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>Code snippet that opens the firmware file <code>demoprog_stm32f091.srec</code>, stored in the <code>firmwares</code> directory on the SD cards' first FAT32 partition:</p>
+<pre><code class="language-c">uint8_t fileOpened = TBX_FALSE;
+
+if (BltFirmwareFileOpen(&quot;/firmwares/demoprog_stm32f091.srec&quot;) == TBX_OK)
+{
+  fileOpened = TBX_TRUE;
+}
+</code></pre>
+<h4 id="bltfirmwarefileclose">BltFirmwareFileClose</h4>
+<pre><code class="language-c">void BltFirmwareFileClose(void)
+</code></pre>
+<p>Closes the previously opened firmware file.</p>
+<h4 id="bltfirmwaregettotalsize">BltFirmwareGetTotalSize</h4>
+<pre><code class="language-c">uint32_t BltFirmwareGetTotalSize(void)
+</code></pre>
+<p>Obtains the total number of data bytes present in all segments of the firmware file. You could for example use this number to track the progress of a firmware update, taking into account how many bytes you already programmed with <a href="#bltsessionwritedata"><code>BltSessionWriteData()</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total number of firmware data bytes present in all segments of the firmware file.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="bltfirmwaresegmentgetcount">BltFirmwareSegmentGetCount</h4>
+<pre><code class="language-c">uint8_t BltFirmwareSegmentGetCount(void)
+</code></pre>
+<p>Obtains the total number of firmware data segments encountered in the firmware file. A firmware data segment consists of a consecutive block of firmware data. A firmware file always has at least one segment. However, it can have more as well. For example if there is a gap between the vector table and the other program data.</p>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total number of firmware data segments present in the firmware file.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="bltfirmwaresegmentgetinfo">BltFirmwareSegmentGetInfo</h4>
+<pre><code class="language-c">uint32_t BltFirmwareSegmentGetInfo(uint8_t idx, uint32_t * address)
+</code></pre>
+<p>Obtains information about the specified segment, such as the base memory address that its data belongs to and the total number of data bytes in the segment.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idx</code></td>
+<td>Zero-based segment index. Valid values are between <code>0</code> and<br><code>(BltFirmwareSegmentGetCount() - 1)</code>.</td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td>The base memory address of the segment's data is written to this pointer.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The total number of data bytes inside this segment.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>Code snippet that loops through all the firmware segments, obtains each segments' info and erases the related sectors in flash memory, on the connected microcontroller. This is what you need to do, before you write the data of the new firmware to flash memory. Note that error checking was left out for clarity.</p>
+<pre><code class="language-c">uint8_t  segmentIdx;
+uint32_t segmentBase = 0U;
+uint32_t segmentLen;
+
+/* Erase the memory segments on the target that the firmware data covers. */
+for (segmentIdx = 0U; segmentIdx &lt; BltFirmwareSegmentGetCount(); segmentIdx++)
+{
+  /* Obtain segment information such as its base memory adddress and length. */
+  segmentLen = BltFirmwareSegmentGetInfo(segmentIdx, &amp;segmentBase);
+  /* Erase the segment. */
+  BltSessionClearMemory(segmentBase, segmentLen);
+}
+</code></pre>
+<h4 id="bltfirmwaresegmentopen">BltFirmwareSegmentOpen</h4>
+<pre><code class="language-c">void BltFirmwareSegmentOpen(uint8_t idx)
+</code></pre>
+<p>Opens the firmware data segment for reading. This should always be called before calling the <a href="#bltfirmwaresegmentgetnextdata"><code>BltFirmwareSegmentGetNextData()</code></a> function.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idx</code></td>
+<td>Zero-based segment index. Valid values are between <code>0</code> and<br/><code>(BltFirmwareSegmentGetCount() - 1)</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="bltfirmwaresegmentgetnextdata">BltFirmwareSegmentGetNextData</h4>
+<pre><code class="language-c">uint8_t const * BltFirmwareSegmentGetNextData(uint32_t * address, uint16_t * len)
+</code></pre>
+<p>Obtains a data pointer to the next chunk of firmware data in the segment that was opened with function <a href="#bltfirmwaresegmentopen"><code>BltFirmwareSegmentOpen()</code></a>. The idea is that you first open the segment and afterwards you can keep calling this function to read out the segment's firmware data. When all data is read, <code>len</code> will be set to zero and a non-<code>NULL</code> pointer is returned.</p>
+<p>Note that there are three possible outcomes when calling this function:</p>
+<ol>
+<li><code>len</code> &gt; <code>0</code> and a non-<code>NULL</code> pointer is returned. This means valid data was read.</li>
+<li><code>len</code> = <code>0</code> and a non-<code>NULL</code> pointer is returned. This means the end of the segment is reached and therefore no new data was actually read.</li>
+<li>A <code>NULL</code> pointer is returned. This happens only when an error occurred.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>address</code></td>
+<td>The starting memory address of this chunk of firmware data is written to this pointer.</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>The length of the firmware data chunk is written to this pointer.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Return value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data pointer to the read firmware if successful, <code>NULL</code> otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<p>Code snippet that presents a function to write the firmware data from a specific segment of the firmware file, to the flash memory on the connected microcontroller. Note that error checking was left out for clarity.</p>
+<pre><code class="language-c">void writeFirmwareSegmentToFlash(uint8_t segmentIdx)
+{
+  uint8_t  const * chunkData;
+  uint16_t         chunkLen = 0U;
+  uint32_t         chunkBase = 0U;
+
+  /* Open the segment for reading. */
+  BltFirmwareSegmentOpen(segmentIdx);
+
+  /* Attempt to read the first chunk of data in this segment. */
+  chunkData = BltFirmwareSegmentGetNextData(&amp;chunkBase, &amp;chunkLen);
+  /* Enter loop to write all data chunks to flash. */
+  while ( (chunkData != NULL) &amp;&amp; (chunkLen &gt; 0U) )
+  {
+    /* Program the newly read data chunk. */
+    BltSessionWriteData(chunkBase, chunkLen, chunkData)
+    /* Attempt to read the next chunk of data in this segment. */
+    chunkData = BltFirmwareSegmentGetNextData(&amp;chunkBase, &amp;chunkLen);
+  }
+}
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../getting_started/" class="btn btn-neutral float-right" title="Getting started">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/feaser/libmicroblt" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../getting_started/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
